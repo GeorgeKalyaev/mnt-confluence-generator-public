@@ -130,3 +130,44 @@ def log_confluence_operation(
         logger.info(log_msg, extra=extra)
     else:
         logger.error(log_msg, extra=extra)
+
+def log_user_action(
+    action: str,
+    user: str = "unknown",
+    details: dict = None,
+    request_id: Optional[str] = None,
+    user_ip: Optional[str] = None,
+    url: Optional[str] = None
+):
+    """Логирование действий пользователя"""
+    extra = {
+        'request_id': request_id or '-',
+        'user_ip': user_ip or '-',
+        'user_name': user
+    }
+    log_msg = f"ДЕЙСТВИЕ | {action}"
+    if url:
+        log_msg += f" | URL: {url}"
+    if details:
+        log_msg += f" | Детали: {details}"
+    logger.info(log_msg, extra=extra)
+
+def log_request(
+    method: str,
+    path: str,
+    status_code: int,
+    request_id: Optional[str] = None,
+    user_ip: Optional[str] = None,
+    user_name: Optional[str] = None,
+    duration_ms: Optional[float] = None
+):
+    """Логирование HTTP запросов"""
+    extra = {
+        'request_id': request_id or '-',
+        'user_ip': user_ip or '-',
+        'user_name': user_name or '-'
+    }
+    log_msg = f"HTTP | {method} {path} | Status: {status_code}"
+    if duration_ms:
+        log_msg += f" | Duration: {duration_ms:.2f}ms"
+    logger.debug(log_msg, extra=extra)

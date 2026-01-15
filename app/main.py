@@ -3,6 +3,8 @@ from fastapi import FastAPI, Depends, HTTPException, Request, Form, File, Upload
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from starlette.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Optional, List
@@ -10,6 +12,7 @@ import json
 import mimetypes
 import io
 import csv
+import time
 
 from app.database import get_db, check_connection
 from app.models import MNTData, MNTDocument, MNTCreateRequest, MNTListResponse, MNTUpdateRequest
@@ -25,7 +28,10 @@ from app.diff_tracker import compare_mnt_data
 from app.confluence import get_confluence_client, ConfluenceClient
 from app.render import render_mnt_to_confluence_storage
 from app.defaults import get_default_mnt_data
-from app.logger import log_mnt_operation, log_error, log_confluence_operation, logger
+from app.logger import (
+    log_mnt_operation, log_error, log_confluence_operation, 
+    log_user_action, log_request, logger, generate_request_id
+)
 from app.export import export_to_html, export_to_text
 from datetime import datetime
 from fastapi.responses import Response
@@ -41,6 +47,75 @@ templates = Jinja2Templates(directory="app/templates")
 
 # Подключение статических файлов
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+
+# Middleware для логирования всех запросов
+class LoggingMiddleware(BaseHTTPMiddleware):
+    """Middleware для логирования всех HTTP запросов"""
+    async def dispatch(self, request: StarletteRequest, call_next):
+        # Пропускаем статические файлы
+        if request.url.path.startswith("/static"):
+            return await call_next(request)
+        
+        # Генерируем request ID
+        request_id = generate_request_id()
+        request.state.request_id = request_id
+        
+        # Получаем IP пользователя
+        user_ip = request.client.host if request.client else "unknown"
+        request.state.user_ip = user_ip
+        
+        # Начало запроса
+        start_time = time.time()
+        method = request.method
+        path = request.url.path
+        query_params = str(request.query_params) if request.query_params else ""
+        
+        logger.debug(
+            f"ВХОДЯЩИЙ ЗАПРОС | {method} {path}",
+            extra={
+                'request_id': request_id,
+                'user_ip': user_ip,
+                'user_name': '-'
+            }
+        )
+        if query_params:
+            logger.debug(
+                f"Query params: {query_params}",
+                extra={
+                    'request_id': request_id,
+                    'user_ip': user_ip,
+                    'user_name': '-'
+                }
+            )
+        
+        try:
+            response = await call_next(request)
+            duration_ms = (time.time() - start_time) * 1000
+            
+            # Логируем ответ
+            log_request(
+                method=method,
+                path=path,
+                status_code=response.status_code,
+                request_id=request_id,
+                user_ip=user_ip,
+                duration_ms=duration_ms
+            )
+            
+            return response
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            log_error(
+                error=e,
+                context=f"Обработка запроса {method} {path}",
+                request_id=request_id,
+                user_ip=user_ip
+            )
+            raise
+
+# Подключаем middleware
+app.add_middleware(LoggingMiddleware)
 
 
 @app.on_event("startup")
@@ -61,6 +136,17 @@ async def root(request: Request):
 @app.get("/mnt/create", response_class=HTMLResponse)
 async def create_page(request: Request, db: Session = Depends(get_db), error: Optional[str] = None):
     """Страница создания МНТ с предзаполненными дефолтными значениями"""
+    request_id = getattr(request.state, 'request_id', '-')
+    user_ip = getattr(request.state, 'user_ip', '-')
+    
+    log_user_action(
+        action="Открыта страница создания МНТ",
+        user="anonymous",
+        request_id=request_id,
+        user_ip=user_ip,
+        url="/mnt/create"
+    )
+    
     default_data = get_default_mnt_data()
     return templates.TemplateResponse("create.html", {
         "request": request,
@@ -519,6 +605,21 @@ async def handle_create_form(
     db: Session = Depends(get_db)
 ):
     """Обработка формы создания МНТ"""
+    request_id = getattr(request.state, 'request_id', generate_request_id())
+    user_ip = getattr(request.state, 'user_ip', '-')
+    
+    should_publish = publish == "1"
+    action_type = "публикация" if should_publish else "создание черновика"
+    
+    logger.info(
+        f"НАЧАЛО СОЗДАНИЯ МНТ | Проект: {project_name} | Автор: {author} | Действие: {action_type}",
+        extra={
+            'request_id': request_id,
+            'user_ip': user_ip,
+            'user_name': author
+        }
+    )
+    
     # Обрабатываем пользовательские блоки из формы
     custom_sections = []
     form_data = await request.form()
@@ -673,6 +774,14 @@ async def handle_create_form(
     
     # Создаем МНТ в БД (используем старую структуру БД для совместимости)
     try:
+        logger.info(
+            f"СОЗДАНИЕ МНТ В БД | Проект: {project_for_db} | Название: {title_for_db}",
+            extra={
+                'request_id': request_id,
+                'user_ip': user_ip,
+                'user_name': author
+            }
+        )
         mnt_data_for_db = {
             "title": title_for_db,
             "project": project_for_db,
@@ -683,8 +792,18 @@ async def handle_create_form(
         result = create_mnt(db, mnt_data_for_db, confluence_space, confluence_parent_id)
         mnt_id = result["id"]
         
+        logger.info(
+            f"МНТ УСПЕШНО СОЗДАН | ID: {mnt_id} | Проект: {project_for_db} | Название: {title_for_db}",
+            extra={
+                'request_id': request_id,
+                'user_ip': user_ip,
+                'user_name': author
+            }
+        )
+        
         # Логируем действие
-        log_mnt_operation("Создание МНТ", mnt_id, author or "unknown")
+        log_mnt_operation("Создание МНТ", mnt_id, author or "unknown", 
+                         request_id=request_id, user_ip=user_ip)
         log_action(db, mnt_id, author or "unknown", "created", 
                   f"Создан новый МНТ: {title_for_db}",
                   {"project": project_for_db, "space": confluence_space})
@@ -819,6 +938,15 @@ async def handle_create_form(
             return RedirectResponse(url=f"/mnt/{mnt_id}/edit?error={error_encoded}", status_code=303)
     
     # Редирект на список после успешного создания
+    logger.info(
+        f"ЗАВЕРШЕНО СОЗДАНИЕ МНТ | ID: {mnt_id} | Статус: {'опубликован' if should_publish else 'черновик'}",
+        extra={
+            'request_id': request_id,
+            'user_ip': user_ip,
+            'user_name': author
+        }
+    )
+    
     if should_publish:
         return RedirectResponse(url=f"/mnt/list?success=created_published&id={mnt_id}", status_code=303)
     else:
@@ -902,6 +1030,21 @@ async def handle_edit_form(
     db: Session = Depends(get_db)
 ):
     """Обработка формы редактирования МНТ"""
+    request_id = getattr(request.state, 'request_id', generate_request_id())
+    user_ip = getattr(request.state, 'user_ip', '-')
+    
+    should_publish = publish == "1"
+    action_type = "публикация" if should_publish else "сохранение изменений"
+    
+    logger.info(
+        f"НАЧАЛО РЕДАКТИРОВАНИЯ МНТ | ID: {mnt_id} | Автор: {author} | Действие: {action_type}",
+        extra={
+            'request_id': request_id,
+            'user_ip': user_ip,
+            'user_name': author
+        }
+    )
+    
     document = get_mnt(db, mnt_id)
     if not document:
         raise HTTPException(status_code=404, detail="МНТ не найден")
