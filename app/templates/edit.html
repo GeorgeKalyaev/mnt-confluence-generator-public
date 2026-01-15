@@ -1,0 +1,978 @@
+{% extends "base.html" %}
+
+{% block title %}Редактировать МНТ - МНТ Generator{% endblock %}
+
+{% block navigation %}
+<nav class="form-navigation">
+    <h5>Навигация</h5>
+    <div class="nav-container">
+        <div class="nav-section">
+            <a href="#section-header" class="nav-item">Заголовок документа</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-1" class="nav-item">1. История изменений</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-2" class="nav-item">2. Лист согласования</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-3" class="nav-item">3. Сокращения и терминология</a>
+            <a href="#section-3-1" class="nav-item nav-subsection">3.1 Сокращения</a>
+            <a href="#section-3-2" class="nav-item nav-subsection">3.2 Терминология</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-4" class="nav-item">4. Введение</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-5" class="nav-item">5. Цели и задачи НТ</a>
+            <a href="#section-5-1" class="nav-item nav-subsection">5.1 Цели НТ</a>
+            <a href="#section-5-2" class="nav-item nav-subsection">5.2 Задачи НТ</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-6" class="nav-item">6. Ограничения и риски НТ</a>
+            <a href="#section-6-1" class="nav-item nav-subsection">6.1 Ограничения НТ</a>
+            <a href="#section-6-2" class="nav-item nav-subsection">6.2 Риски НТ</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-7" class="nav-item">7. Объект НТ</a>
+            <a href="#section-7-1" class="nav-item nav-subsection">7.1 Общие сведения</a>
+            <a href="#section-7-2" class="nav-item nav-subsection">7.2 Требования к производительности</a>
+            <a href="#section-7-3" class="nav-item nav-subsection">7.3 Архитектура системы</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-8" class="nav-item">8. Тестовый и промышленный стенды</a>
+            <a href="#section-8-1" class="nav-item nav-subsection">8.1 Архитектура тестового стенда</a>
+            <a href="#section-8-2" class="nav-item nav-subsection">8.2 Сравнение конфигураций</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-9" class="nav-item">9. Стратегия тестирования</a>
+            <a href="#section-9-1" class="nav-item nav-subsection">9.1 Описание планируемых тестов</a>
+            <a href="#section-9-2" class="nav-item nav-subsection">9.2 Условия завершения НТ</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-10" class="nav-item">10. Наполнение БД</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-11" class="nav-item">11. Моделирование нагрузки</a>
+            <a href="#section-11-1" class="nav-item nav-subsection">11.1 Общие принципы</a>
+            <a href="#section-11-2" class="nav-item nav-subsection">11.2 Профили нагрузки</a>
+            <a href="#section-11-3" class="nav-item nav-subsection">11.3 Сценарии использования</a>
+            <a href="#section-11-4" class="nav-item nav-subsection">11.4 Описание работы эмуляторов</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-12" class="nav-item">12. Мониторинг</a>
+            <a href="#section-12-1" class="nav-item nav-subsection">12.1 Описание средств мониторинга</a>
+            <a href="#section-12-2" class="nav-item nav-subsection">12.2 Описание метрик мониторинга</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-13" class="nav-item">13. Требования к Заказчику</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-14" class="nav-item">14. Материалы, подлежащие сдаче</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-15" class="nav-item">15. Контакты</a>
+        </div>
+        <div class="nav-section">
+            <a href="#section-confluence" class="nav-item">Публикация в Confluence</a>
+        </div>
+    </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Редактировать МНТ: {{ document.title }}</h1>
+
+<!-- Уведомления об успехе/ошибках -->
+{% set success_param = success_message or request.query_params.get('success') %}
+{% if success_param %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    {% if success_param == 'updated' %}
+    <strong>✓ Успешно!</strong> МНТ обновлен.
+    {% elif success_param == 'updated_published' %}
+    <strong>✓ Успешно!</strong> МНТ обновлен и опубликован в Confluence.
+    {% elif success_param == 'restored' %}
+    <strong>✓ Успешно!</strong> МНТ восстановлен из корзины. {% if document.confluence_page_id %}Страница в Confluence пересоздана.{% endif %}
+    {% else %}
+    <strong>✓ Успешно!</strong> {{ success_param }}
+    {% endif %}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+{% set error_param = error_message or request.query_params.get('error') %}
+{% if error_param %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <strong>✗ Ошибка!</strong> {{ error_param }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+{% set warning_param = warning_message or request.query_params.get('warning') %}
+{% if warning_param %}
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+    <strong>⚠ Предупреждение:</strong> 
+    {% if warning_param == 'confluence_failed' %}
+    МНТ восстановлен, но не удалось пересоздать страницу в Confluence. Вы можете опубликовать его заново.
+    {% else %}
+    {{ warning_param }}
+    {% endif %}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+{% if document.last_error and not error_param %}
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+    <strong>⚠ Предупреждение:</strong> {{ document.last_error }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+{# Предупреждение о неопубликованных изменениях #}
+{% if document.status == 'published' and document.confluence_page_id %}
+    {% if document.last_publish_at and document.updated_at and document.updated_at > document.last_publish_at %}
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+        <strong>ℹ️ Информация:</strong> Этот МНТ был опубликован в Confluence, но после публикации были внесены изменения, которые еще не опубликованы. 
+        Текущая версия в Confluence может отличаться от версии в базе данных.
+        <br><small class="text-muted">
+            Последняя публикация: {{ document.last_publish_at.strftime('%d.%m.%Y %H:%M') }} | 
+            Последнее обновление: {{ document.updated_at.strftime('%d.%m.%Y %H:%M') }}
+        </small>
+        
+        {% if unpublished_changes and unpublished_changes|length > 0 %}
+        <div class="mt-3">
+            <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#unpublished-changes-list" aria-expanded="false" aria-controls="unpublished-changes-list">
+                📝 Показать список изменений ({{ unpublished_changes|length }})
+            </button>
+            <small class="text-muted ms-2">Измененные поля будут подсвечены в форме ниже</small>
+            <div class="collapse mt-2" id="unpublished-changes-list">
+                <div class="card card-body bg-light" style="max-height: 400px; overflow-y: auto;">
+                    <small>
+                        <strong>Измененные поля:</strong>
+                        <ul class="mb-0 mt-2">
+                            {% for change in unpublished_changes %}
+                            <li class="mb-2">
+                                <strong>{{ change.field_name or change.field }}:</strong>
+                                {% if change.type == 'added' %}
+                                    <span class="text-success">+ Добавлено</span>
+                                    {% if change.new and change.new is string and change.new|length < 100 %}
+                                        <br><span class="text-muted">{{ change.new }}</span>
+                                    {% elif change.new and change.new is iterable and change.new is not string %}
+                                        <span class="text-muted">({{ change.new|length }} элементов)</span>
+                                    {% endif %}
+                                {% elif change.type == 'removed' %}
+                                    <span class="text-danger">- Удалено</span>
+                                    {% if change.old and change.old is string and change.old|length < 100 %}
+                                        <br><span class="text-muted text-decoration-line-through">{{ change.old }}</span>
+                                    {% elif change.old and change.old is iterable and change.old is not string %}
+                                        <span class="text-muted">({{ change.old|length }} элементов)</span>
+                                    {% endif %}
+                                {% elif change.type == 'changed' %}
+                                    <span class="text-primary">~ Изменено</span>
+                                    {% if change.old and change.old is string %}
+                                        <br><span class="text-danger text-decoration-line-through">Было: {{ change.old[:80] }}{% if change.old|length > 80 %}...{% endif %}</span>
+                                    {% endif %}
+                                    {% if change.new and change.new is string %}
+                                        <br><span class="text-success">Стало: {{ change.new[:80] }}{% if change.new|length > 80 %}...{% endif %}</span>
+                                    {% elif change.new and change.new is iterable and change.new is not string %}
+                                        <br><span class="text-muted">({{ change.new|length }} элементов)</span>
+                                    {% endif %}
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% elif document.updated_at and not document.last_publish_at %}
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+        <strong>ℹ️ Информация:</strong> Этот МНТ был опубликован в Confluence, но возможно есть неопубликованные изменения.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+{% endif %}
+
+{% if document.confluence_page_url %}
+<div class="alert alert-info">
+    <strong>Страница в Confluence:</strong> <a href="{{ document.confluence_page_url }}" target="_blank">{{ document.confluence_page_url }}</a>
+</div>
+{% endif %}
+
+{% if existing_attachments %}
+<div class="form-section">
+    <h3>Существующие вложения в Confluence</h3>
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Имя файла</th>
+                    <th>Тип</th>
+                    <th>Размер</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for attachment in existing_attachments %}
+                <tr>
+                    <td>{{ attachment.filename }}</td>
+                    <td>{{ attachment.mediaType }}</td>
+                    <td>{{ attachment.fileSize }} bytes</td>
+                    <td>
+                        <a href="/mnt/{{ document.id }}/attachment/{{ attachment.id }}/delete" 
+                           class="btn btn-sm btn-danger" 
+                           onclick="return confirm('Вы уверены, что хотите удалить это вложение?')">
+                            Удалить
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<form method="post" action="/mnt/{{ document.id }}/edit" enctype="multipart/form-data">
+    
+    <!-- Заголовок документа -->
+    <div class="form-section" id="section-header">
+        <h3>Заголовок документа</h3>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="project_name" class="form-label">Название проекта <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="project_name" name="project_name" required 
+                       value="{{ data.project_name if data else document.title }}">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="organization_name" class="form-label">Название компании <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="organization_name" name="organization_name" required 
+                       value="{{ data.organization_name if data else '' }}">
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="system_version" class="form-label">Версия системы <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="system_version" name="system_version" required 
+                       value="{{ data.system_version if data else '' }}" placeholder="Например: 1.0">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="author" class="form-label">Автор (для истории изменений) <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="author" name="author" required 
+                       value="{{ document.author }}">
+            </div>
+        </div>
+    </div>
+
+    <!-- Раздел 1: История изменений -->
+    <div class="form-section" id="section-1">
+        <h3>1. История изменений</h3>
+        <div class="mb-3">
+            <label for="history_changes_table" class="form-label">Таблица истории изменений</label>
+            <small class="text-muted d-block mb-2">Формат: Дата|Версия|Описание|Автор (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="history_changes_table" name="history_changes_table" rows="6">{{ data.history_changes_table if data else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Раздел 2: Лист согласования -->
+    <div class="form-section" id="section-2">
+        <h3>2. Лист согласования</h3>
+        <div class="mb-3">
+            <label for="approval_list_table" class="form-label">Таблица листа согласования</label>
+            <small class="text-muted d-block mb-2">Формат: ФИО|Должность|Подпись|Дата (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="approval_list_table" name="approval_list_table" rows="5">{{ data.approval_list_table if data else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Раздел 3: Сокращения и терминология -->
+    <div class="form-section" id="section-3">
+        <h3>3. Сокращения и терминология</h3>
+        
+        <h4 class="mt-3 mb-3" id="section-3-1">3.1 Сокращения</h4>
+        <div class="mb-3">
+            <label for="abbreviations_table" class="form-label">Таблица сокращений</label>
+            <small class="text-muted d-block mb-2">Формат: Наименование сокращения|Описание (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="abbreviations_table" name="abbreviations_table" rows="15">{{ data.abbreviations_table if data else '' }}</textarea>
+        </div>
+
+        <h4 class="mt-3 mb-3" id="section-3-2">3.2 Терминология</h4>
+        <div class="mb-3">
+            <label for="terminology_table" class="form-label">Таблица терминологии</label>
+            <small class="text-muted d-block mb-2">Формат: Термин|Определение (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="terminology_table" name="terminology_table" rows="15">{{ data.terminology_table if data else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Раздел 4: Введение -->
+    <div class="form-section" id="section-4">
+        <h3>4. Введение</h3>
+        <div class="mb-3">
+            <label for="introduction_text" class="form-label">Текст введения</label>
+            <textarea class="form-control" id="introduction_text" name="introduction_text" rows="10">{{ data.introduction_text if data else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Раздел 5: Цели и задачи НТ -->
+    <div class="form-section" id="section-5">
+        <h3>5. Цели и задачи НТ</h3>
+        
+        <h4 class="mt-3 mb-3" id="section-5-1">5.1 Цели НТ</h4>
+        <div class="mb-3">
+            <label for="goals_business" class="form-label">Бизнес-цели (каждый пункт с новой строки)</label>
+            <textarea class="form-control" id="goals_business" name="goals_business" rows="5">{{ data.goals_business if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="goals_technical" class="form-label">Технические цели (каждый пункт с новой строки)</label>
+            <textarea class="form-control" id="goals_technical" name="goals_technical" rows="5">{{ data.goals_technical if data else '' }}</textarea>
+        </div>
+
+        <h4 class="mt-3 mb-3" id="section-5-2">5.2 Задачи НТ</h4>
+        <div class="mb-3">
+            <label for="tasks_nt" class="form-label">Список задач НТ (каждая задача с новой строки, можно нумеровать)</label>
+            <textarea class="form-control" id="tasks_nt" name="tasks_nt" rows="10">{{ data.tasks_nt if data else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Раздел 6: Ограничения и риски НТ -->
+    <div class="form-section" id="section-6">
+        <h3>6. Ограничения и риски НТ</h3>
+        
+        <h4 class="mt-3 mb-3" id="section-6-1">6.1 Ограничения НТ</h4>
+        <div class="mb-3">
+            <label for="limitations_list" class="form-label">Список ограничений НТ (каждое ограничение с новой строки)</label>
+            <textarea class="form-control" id="limitations_list" name="limitations_list" rows="15">{{ data.limitations_list if data else '' }}</textarea>
+        </div>
+
+        <h4 class="mt-3 mb-3" id="section-6-2">6.2 Риски НТ</h4>
+        <div class="mb-3">
+            <label for="risks_table" class="form-label">Таблица рисков НТ</label>
+            <small class="text-muted d-block mb-2">Формат: Риск|Вероятность возникновения|Влияние (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="risks_table" name="risks_table" rows="15">{{ data.risks_table if data else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Раздел 7: Объект НТ -->
+    <div class="form-section" id="section-7">
+        <h3>7. Объект НТ</h3>
+        
+        <h4 class="mt-3 mb-3" id="section-7-1">7.1 Общие сведения</h4>
+        <div class="mb-3">
+            <label for="object_general" class="form-label">Общие сведения об объекте НТ</label>
+            <textarea class="form-control" id="object_general" name="object_general" rows="3">{{ data.object_general if data else '' }}</textarea>
+        </div>
+
+        <h4 class="mt-3 mb-3" id="section-7-2">7.2 Требования к производительности</h4>
+        <div class="mb-3">
+            <label for="performance_requirements" class="form-label">Список требований к производительности (каждое требование с новой строки)</label>
+            <textarea class="form-control" id="performance_requirements" name="performance_requirements" rows="6">{{ data.performance_requirements if data else '' }}</textarea>
+        </div>
+
+        <h4 class="mt-3 mb-3" id="section-7-3">7.3 Архитектура системы</h4>
+        
+        <h5 class="mt-2 mb-2">7.3.1 Компонентная архитектура</h5>
+        <div class="mb-3">
+            <label for="component_architecture_text" class="form-label">Текст описания компонентной архитектуры (каждый компонент с новой строки)</label>
+            <textarea class="form-control" id="component_architecture_text" name="component_architecture_text" rows="6">{{ data.component_architecture_text if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="component_architecture_image_file" class="form-label">Изображение компонентной архитектуры (Рисунок 1) - загрузить новое</label>
+            <input type="file" class="form-control" id="component_architecture_image_file" name="component_architecture_image_file" accept="image/*">
+            <small class="text-muted">Если загрузите новое изображение, оно заменит существующее</small>
+        </div>
+
+        <h5 class="mt-3 mb-2">7.3.2 Информационная архитектура</h5>
+        <div class="mb-3">
+            <label for="information_architecture_image_file" class="form-label">Изображение информационной архитектуры (Рисунок 2) - загрузить новое</label>
+            <input type="file" class="form-control" id="information_architecture_image_file" name="information_architecture_image_file" accept="image/*">
+            <small class="text-muted">Если загрузите новое изображение, оно заменит существующее</small>
+        </div>
+    </div>
+
+    <!-- Раздел 8: Тестовый и промышленный стенды -->
+    <div class="form-section" id="section-8">
+        <h3>8. Тестовый и промышленный стенды</h3>
+        
+        <h4 class="mt-3 mb-3" id="section-8-1">8.1 Архитектура тестового стенда</h4>
+        <div class="mb-3">
+            <label for="test_stand_architecture_text" class="form-label">Описание архитектуры тестового стенда</label>
+            <textarea class="form-control" id="test_stand_architecture_text" name="test_stand_architecture_text" rows="4">{{ data.test_stand_architecture_text if data else '' }}</textarea>
+        </div>
+
+        <h4 class="mt-3 mb-3" id="section-8-2">8.2 Сравнение конфигураций промышленной среды и тестового стенда</h4>
+        <div class="mb-3">
+            <label for="stand_comparison_table" class="form-label">Таблица сравнения конфигураций</label>
+            <small class="text-muted d-block mb-2">Формат: Система|Параметр|Значение на контуре|Значение на продуктивной среде (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="stand_comparison_table" name="stand_comparison_table" rows="10">{{ data.stand_comparison_table if data else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Раздел 9: Стратегия тестирования -->
+    <div class="form-section" id="section-9">
+        <h3>9. Стратегия тестирования</h3>
+        
+        <h4 class="mt-3 mb-3" id="section-9-1">9.1 Описание планируемых тестов</h4>
+        <div class="mb-3">
+            <label for="planned_tests_intro" class="form-label">Вводный текст</label>
+            <textarea class="form-control" id="planned_tests_intro" name="planned_tests_intro" rows="3">{{ data.planned_tests_intro if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="planned_tests_table" class="form-label">Таблица планируемых тестов</label>
+            <small class="text-muted d-block mb-2">Формат: №|Тест|Длительность теста|Описание теста (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="planned_tests_table" name="planned_tests_table" rows="8">{{ data.planned_tests_table if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="planned_tests_note" class="form-label">Примечание после таблицы</label>
+            <textarea class="form-control" id="planned_tests_note" name="planned_tests_note" rows="3">{{ data.planned_tests_note if data else '' }}</textarea>
+        </div>
+
+        <h4 class="mt-3 mb-3" id="section-9-2">9.2 Условия завершения НТ</h4>
+        <div class="mb-3">
+            <label for="completion_conditions" class="form-label">Список условий завершения НТ (каждое условие с новой строки)</label>
+            <textarea class="form-control" id="completion_conditions" name="completion_conditions" rows="6">{{ data.completion_conditions if data else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Раздел 10: Наполнение БД -->
+    <div class="form-section" id="section-10">
+        <h3>10. Наполнение БД</h3>
+        <div class="mb-3">
+            <label for="database_preparation_text" class="form-label">Текст описания наполнения БД</label>
+            <textarea class="form-control" id="database_preparation_text" name="database_preparation_text" rows="6">{{ data.database_preparation_text if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="database_preparation_table" class="form-label">Таблица требований к объемам данных</label>
+            <small class="text-muted d-block mb-2">Формат: Схема.Таблица|Текущее кол-во строк в таблице|Прогноз роста в день (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="database_preparation_table" name="database_preparation_table" rows="8">{{ data.database_preparation_table if data else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Раздел 11: Моделирование нагрузки -->
+    <div class="form-section" id="section-11">
+        <h3>11. Моделирование нагрузки</h3>
+        
+        <h4 class="mt-3 mb-3" id="section-11-1">11.1 Общие принципы моделирования нагрузки</h4>
+        <div class="mb-3">
+            <label for="load_modeling_principles" class="form-label">Текст принципов моделирования нагрузки</label>
+            <textarea class="form-control" id="load_modeling_principles" name="load_modeling_principles" rows="12">{{ data.load_modeling_principles if data else '' }}</textarea>
+        </div>
+
+        <h4 class="mt-3 mb-3" id="section-11-2">11.2 Профили нагрузки</h4>
+        <div class="mb-3">
+            <label for="load_profiles_intro" class="form-label">Вводный текст</label>
+            <textarea class="form-control" id="load_profiles_intro" name="load_profiles_intro" rows="3">{{ data.load_profiles_intro if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="load_profiles_table" class="form-label">Таблица профилей нагрузки</label>
+            <small class="text-muted d-block mb-2">Формат: Название страниц|Интенсивность нагрузки, операций\минута (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="load_profiles_table" name="load_profiles_table" rows="8">{{ data.load_profiles_table if data else '' }}</textarea>
+        </div>
+
+        <h4 class="mt-3 mb-3" id="section-11-3">11.3 Сценарии использования</h4>
+        <div class="mb-3">
+            <label for="use_scenarios_intro" class="form-label">Вводный текст</label>
+            <textarea class="form-control" id="use_scenarios_intro" name="use_scenarios_intro" rows="3">{{ data.use_scenarios_intro if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="use_scenarios_table" class="form-label">Таблица сценариев использования</label>
+            <small class="text-muted d-block mb-2">Формат: Шаги|Интенсивность нагрузки, операций\минута принятая за 100% (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="use_scenarios_table" name="use_scenarios_table" rows="8">{{ data.use_scenarios_table if data else '' }}</textarea>
+        </div>
+
+        <h4 class="mt-3 mb-3" id="section-11-4">11.4 Описание работы эмуляторов</h4>
+        <div class="mb-3">
+            <label for="emulators_description" class="form-label">Текст описания работы эмуляторов</label>
+            <textarea class="form-control" id="emulators_description" name="emulators_description" rows="4">{{ data.emulators_description if data else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Раздел 12: Мониторинг -->
+    <div class="form-section" id="section-12">
+        <h3>12. Мониторинг</h3>
+        
+        <div class="mb-3">
+            <label for="monitoring_intro" class="form-label">Общий вводный текст</label>
+            <textarea class="form-control" id="monitoring_intro" name="monitoring_intro" rows="4">{{ data.monitoring_intro if data else '' }}</textarea>
+        </div>
+
+        <h4 class="mt-3 mb-3" id="section-12-1">12.1 Описание средств мониторинга</h4>
+        <div class="mb-3">
+            <label for="monitoring_tools_intro" class="form-label">Вводный текст</label>
+            <textarea class="form-control" id="monitoring_tools_intro" name="monitoring_tools_intro" rows="2">{{ data.monitoring_tools_intro if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="monitoring_tools_table" class="form-label">Таблица средств мониторинга</label>
+            <small class="text-muted d-block mb-2">Формат: Наименование|Роль|Эндпоинт (URI) (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="monitoring_tools_table" name="monitoring_tools_table" rows="8">{{ data.monitoring_tools_table if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="monitoring_tools_note" class="form-label">Текст после таблицы средств мониторинга</label>
+            <textarea class="form-control" id="monitoring_tools_note" name="monitoring_tools_note" rows="8">{{ data.monitoring_tools_note if data else '' }}</textarea>
+        </div>
+
+        <h4 class="mt-3 mb-3" id="section-12-2">12.2 Описание метрик мониторинга</h4>
+        
+        <h5 class="mt-2 mb-2">12.2.1 Мониторинг системных ресурсов</h5>
+        <div class="mb-3">
+            <label for="system_resources_intro" class="form-label">Вводный текст</label>
+            <textarea class="form-control" id="system_resources_intro" name="system_resources_intro" rows="2">{{ data.system_resources_intro if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="system_resources_table" class="form-label">Таблица метрик системных ресурсов</label>
+            <small class="text-muted d-block mb-2">Формат: №|Тип метрики|Способ снятия|Способ получения|Визуализация (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="system_resources_table" name="system_resources_table" rows="8">{{ data.system_resources_table if data else '' }}</textarea>
+        </div>
+
+        <h5 class="mt-3 mb-2">12.2.2 Мониторинг бизнес-метрик</h5>
+        <div class="mb-3">
+            <label for="business_metrics_intro" class="form-label">Вводный текст</label>
+            <textarea class="form-control" id="business_metrics_intro" name="business_metrics_intro" rows="2">{{ data.business_metrics_intro if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="business_metrics_table" class="form-label">Таблица бизнес-метрик</label>
+            <small class="text-muted d-block mb-2">Формат: Бизнес-метрика|Единица измерения (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="business_metrics_table" name="business_metrics_table" rows="10">{{ data.business_metrics_table if data else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Раздел 13: Требования к Заказчику -->
+    <div class="form-section" id="section-13">
+        <h3>13. Требования к Заказчику</h3>
+        <div class="mb-3">
+            <label for="customer_requirements_intro" class="form-label">Вводный текст</label>
+            <textarea class="form-control" id="customer_requirements_intro" name="customer_requirements_intro" rows="3">{{ data.customer_requirements_intro if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="customer_requirements_list" class="form-label">Список требований (каждое требование с новой строки, можно нумеровать)</label>
+            <textarea class="form-control" id="customer_requirements_list" name="customer_requirements_list" rows="15">{{ data.customer_requirements_list if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="customer_requirements_note_intro" class="form-label">Вводный текст для примечания</label>
+            <textarea class="form-control" id="customer_requirements_note_intro" name="customer_requirements_note_intro" rows="2">{{ data.customer_requirements_note_intro if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="customer_requirements_note_list" class="form-label">Список условий при изменении сроков (каждое условие с новой строки, можно нумеровать)</label>
+            <textarea class="form-control" id="customer_requirements_note_list" name="customer_requirements_note_list" rows="5">{{ data.customer_requirements_note_list if data else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Раздел 14: Материалы, подлежащие сдаче -->
+    <div class="form-section" id="section-14">
+        <h3>14. Материалы, подлежащие сдаче</h3>
+        <div class="mb-3">
+            <label for="deliverables_intro" class="form-label">Вводный текст</label>
+            <textarea class="form-control" id="deliverables_intro" name="deliverables_intro" rows="2">{{ data.deliverables_intro if data else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="deliverables_table" class="form-label">Таблица материалов</label>
+            <small class="text-muted d-block mb-2">Формат: Документ|Подготавливается в результате деятельности (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="deliverables_table" name="deliverables_table" rows="8">{{ data.deliverables_table if data else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Раздел 15: Контакты -->
+    <div class="form-section" id="section-15">
+        <h3>15. Контакты</h3>
+        <div class="mb-3">
+            <label for="contacts_table" class="form-label">Таблица контактов ответственных лиц</label>
+            <small class="text-muted d-block mb-2">Формат: п/п|ФИО|Сфера ответственности|Контакты (каждая строка - отдельная запись)</small>
+            <textarea class="form-control" id="contacts_table" name="contacts_table" rows="6">{{ data.contacts_table if data else '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Пользовательские блоки - закомментировано
+    <div id="custom-sections-container"></div>
+    
+    <div class="form-section" id="section-add-custom">
+        <h3>Добавить пользовательский блок</h3>
+        <div class="mb-3">
+            <label for="custom_section_title" class="form-label">Название блока <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="custom_section_title" placeholder="Например: 16. Дополнительные материалы">
+        </div>
+        <div class="mb-3">
+            <label for="custom_section_insert_after" class="form-label">Вставить после блока</label>
+            <select class="form-select" id="custom_section_insert_after">
+                <option value="15">15. Контакты (в конец документа)</option>
+                <option value="1">1. История изменений</option>
+                <option value="2">2. Лист согласования</option>
+                <option value="3">3. Сокращения и терминология</option>
+                <option value="4">4. Введение</option>
+                <option value="5">5. Цели и задачи НТ</option>
+                <option value="6">6. Ограничения и риски НТ</option>
+                <option value="7">7. Объект НТ</option>
+                <option value="8">8. Тестовый и промышленный стенды</option>
+                <option value="9">9. Стратегия тестирования</option>
+                <option value="10">10. Наполнение БД</option>
+                <option value="11">11. Моделирование нагрузки</option>
+                <option value="12">12. Мониторинг</option>
+                <option value="13">13. Требования к Заказчику</option>
+                <option value="14">14. Материалы, подлежащие сдаче</option>
+                <option value="15">15. Контакты</option>
+            </select>
+        </div>
+        <button type="button" class="btn btn-primary" id="add-custom-section-btn">Добавить блок</button>
+    </div>
+    -->
+
+    <!-- Теги -->
+    <div class="form-section" id="section-tags">
+        <h3>Теги</h3>
+        <div class="mb-3">
+            <label for="tags" class="form-label">Теги (через запятую)</label>
+            {% set existing_tags = data.tags if data and data.tags else [] %}
+            <input type="text" 
+                   class="form-control" 
+                   id="tags" 
+                   name="tags" 
+                   placeholder="Например: Претрейд, Тестирование, Микросервис"
+                   value="{{ existing_tags|join(', ') if existing_tags else '' }}">
+            <small class="form-text text-muted">Введите теги через запятую для категоризации документа. Например: Претрейд, Команда А, Проект Б</small>
+        </div>
+    </div>
+
+    <!-- Confluence -->
+    <div class="form-section" id="section-confluence">
+        <h3>Публикация в Confluence</h3>
+        
+        {% if document.last_error %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>⚠ Ошибка публикации:</strong><br>
+            <small>{{ document.last_error }}</small>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endif %}
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="confluence_space" class="form-label">Space Key <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="confluence_space" name="confluence_space" required 
+                       placeholder="Например: TEST" value="{{ document.confluence_space or '' }}">
+                <small class="form-text text-muted">
+                    Ключ пространства (Space) в Confluence, где будет создана страница МНТ. 
+                    Это короткий уникальный идентификатор пространства (обычно в верхнем регистре).
+                    <br><strong>Как найти Space Key:</strong> Откройте любое пространство в Confluence и посмотрите на URL — там будет параметр <code>spaceKey=TEST</code> или путь <code>/spaces/TEST/</code>
+                </small>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="confluence_parent_id" class="form-label">Parent Page ID (опционально)</label>
+                <input type="number" class="form-control" id="confluence_parent_id" name="confluence_parent_id" 
+                       placeholder="Например: 123456" value="{{ document.confluence_parent_id or '' }}">
+                <small class="form-text text-muted">
+                    ID страницы в Confluence, под которой будет создана эта страница МНТ (для создания иерархии страниц). 
+                    Если не указано, страница будет создана на верхнем уровне пространства.
+                    <br><strong>Как найти ID:</strong> Откройте нужную страницу в Confluence и посмотрите на URL — там будет параметр <code>pageId=123456</code>
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Скрытое поле для отслеживания действия -->
+    <input type="hidden" name="publish" id="publish_hidden" value="">
+    
+    <!-- Кнопки -->
+    <div class="d-flex gap-2 mb-4">
+        <button type="submit" class="btn btn-primary" onclick="document.getElementById('publish_hidden').value='1';">Сохранить и обновить в Confluence</button>
+        <button type="submit" class="btn btn-secondary" onclick="document.getElementById('publish_hidden').value='';">Сохранить (без публикации)</button>
+        <a href="/mnt/{{ document.id }}/preview" target="_blank" class="btn btn-outline-info">👁️ Превью</a>
+        <a href="/mnt/{{ document.id }}/versions" class="btn btn-outline-secondary">📚 История версий</a>
+        <div class="btn-group">
+            <button type="button" class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">📥 Экспорт</button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="/mnt/{{ document.id }}/export/html">Экспорт в HTML</a></li>
+                <li><a class="dropdown-item" href="/mnt/{{ document.id }}/export/txt">Экспорт в TXT</a></li>
+            </ul>
+        </div>
+        <a href="/mnt/list" class="btn btn-outline-secondary">Отмена</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/table-editor.js"></script>
+<script src="/static/js/form-validation.js"></script>
+<script src="/static/js/auto-save.js"></script>
+<script src="/static/js/image-preview.js"></script>
+<script src="/static/js/unsaved-changes.js"></script>
+{% if unpublished_changes and unpublished_changes|length > 0 %}
+<script id="unpublished-changes-data" type="application/json">{{ unpublished_changes|tojson|safe }}</script>
+<script src="/static/js/highlight-changes.js"></script>
+<script>
+// Отладочная информация
+console.log('Отладочная информация: unpublished_changes переданы в шаблон:', {{ unpublished_changes|length }});
+</script>
+{% else %}
+<script>
+console.log('Отладочная информация: unpublished_changes отсутствуют или пусты');
+console.log('unpublished_changes:', {{ unpublished_changes|tojson|safe if unpublished_changes else 'null' }});
+</script>
+{% endif %}
+<script>
+// Инициализация редакторов таблиц для полей, где это нужно
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализируем редакторы таблиц
+    const tableFields = [
+        'history_changes_table',
+        'approval_list_table',
+        'abbreviations_table',
+        'terminology_table',
+        'risks_table',
+        'stand_comparison_table',
+        'planned_tests_table',
+        'database_preparation_table',
+        'load_profiles_table',
+        'use_scenarios_table',
+        'monitoring_tools_table',
+        'system_resources_table',
+        'business_metrics_table',
+        'deliverables_table',
+        'contacts_table'
+    ];
+    
+    tableFields.forEach(fieldId => {
+        if (document.getElementById(fieldId)) {
+            new TableEditor(fieldId);
+        }
+    });
+    
+    // Навигация - плавная прокрутка (только для боковой навигации формы)
+    document.querySelectorAll('.form-navigation .nav-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault(); // Всегда предотвращаем стандартное поведение
+            const href = this.getAttribute('href');
+            // Обрабатываем только якоря (начинающиеся с #)
+            if (href && href.startsWith('#')) {
+                const targetId = href.substring(1);
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    // Получаем позицию элемента с учетом offset для фиксированной навигации
+                    const elementPosition = targetElement.getBoundingClientRect().top + window.pageYOffset;
+                    const offsetPosition = elementPosition - 80; // Отступ сверху
+                    
+                    window.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Подсветка активного пункта
+                    document.querySelectorAll('.form-navigation .nav-item').forEach(nav => nav.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Обновляем URL без перезагрузки страницы
+                    history.pushState(null, null, href);
+                } else {
+                    console.warn(`Элемент с id="${targetId}" не найден`);
+                }
+            }
+            // Для обычных ссылок (не якорей) ничего не делаем - пусть работают как обычно
+        });
+    });
+    
+    // Отслеживание активного раздела при прокрутке
+    const sections = document.querySelectorAll('.form-section[id]');
+    const navItems = document.querySelectorAll('.form-navigation .nav-item[href^="#"]');
+    
+    function updateActiveNav() {
+        let current = '';
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            const sectionHeight = section.clientHeight;
+            if (window.pageYOffset >= sectionTop - 150) {
+                current = section.getAttribute('id');
+            }
+        });
+        
+        navItems.forEach(item => {
+            item.classList.remove('active');
+            if (item.getAttribute('href') === '#' + current) {
+                item.classList.add('active');
+            }
+        });
+    }
+    
+    window.addEventListener('scroll', updateActiveNav);
+    updateActiveNav();
+    
+    // Управление пользовательскими блоками - закомментировано
+    /*
+    let customSectionCounter = 0;
+    const customSectionsContainer = document.getElementById('custom-sections-container');
+    const addCustomSectionBtn = document.getElementById('add-custom-section-btn');
+    
+    function loadExistingCustomSections() {
+        {% if data and data.custom_sections %}
+        const customSections = {{ data.custom_sections | tojson }};
+        customSections.forEach(function(section) {
+            const sectionId = section.id || `custom-${Date.now()}`;
+            const sectionHtml = createCustomSectionHTML(sectionId, section);
+            customSectionsContainer.insertAdjacentHTML('beforeend', sectionHtml);
+            
+            const tableFieldId = `custom_table_${sectionId}`;
+            if (typeof TableEditor !== 'undefined') {
+                setTimeout(() => {
+                    const tableField = document.getElementById(tableFieldId);
+                    if (tableField) {
+                        new TableEditor(tableFieldId);
+                    }
+                }, 100);
+            }
+            
+            addToNavigation(`custom-section-${sectionId}`, section.title || 'Пользовательский блок');
+        });
+        {% endif %}
+    }
+    
+    function createCustomSectionHTML(sectionId, sectionData) {
+        const title = sectionData.title || 'Пользовательский блок';
+        const position = sectionData.position || 15;
+        const text = sectionData.text || '';
+        const table = sectionData.table || '';
+        const list = sectionData.list || '';
+        const uniqueId = sectionData.id || sectionId || `custom-${Date.now()}`;
+        
+        return `
+            <div class="form-section custom-section" id="custom-section-${uniqueId}" data-section-id="${uniqueId}" data-position="${position}">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3>${title.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</h3>
+                    <button type="button" class="btn btn-sm btn-danger remove-custom-section" data-section-id="${uniqueId}">Удалить</button>
+                </div>
+                
+                <input type="hidden" name="custom_sections[${uniqueId}][id]" value="${uniqueId}">
+                <input type="hidden" name="custom_sections[${uniqueId}][title]" value="${title.replace(/"/g, '&quot;')}">
+                <input type="hidden" name="custom_sections[${uniqueId}][position]" value="${position}">
+                
+                <div class="mb-3">
+                    <label class="form-label">Текст</label>
+                    <textarea class="form-control" name="custom_sections[${uniqueId}][text]" rows="5" placeholder="Введите текст блока">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Таблица</label>
+                    <textarea class="form-control" id="custom_table_${uniqueId}" name="custom_sections[${uniqueId}][table]" rows="5" placeholder="Введите таблицу">${table.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                    <small class="text-muted">Формат: Заголовок1|Заголовок2, Данные1|Данные2</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Список (каждый элемент с новой строки)</label>
+                    <textarea class="form-control" name="custom_sections[${uniqueId}][list]" rows="5" placeholder="Введите элементы списка">${list.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (addCustomSectionBtn && customSectionsContainer) {
+        loadExistingCustomSections();
+        
+        addCustomSectionBtn.addEventListener('click', function() {
+            const title = document.getElementById('custom_section_title').value.trim();
+            const insertAfter = parseInt(document.getElementById('custom_section_insert_after').value);
+            
+            if (!title) {
+                alert('Введите название блока');
+                return;
+            }
+            
+            customSectionCounter++;
+            const sectionId = `custom-section-${customSectionCounter}`;
+            const timestamp = Date.now();
+            
+            const sectionData = {
+                id: timestamp,
+                title: title,
+                position: insertAfter,
+                text: '',
+                table: '',
+                list: ''
+            };
+            
+            const sectionHtml = createCustomSectionHTML(timestamp, sectionData);
+            customSectionsContainer.insertAdjacentHTML('beforeend', sectionHtml);
+            
+            if (typeof TableEditor !== 'undefined') {
+                const tableEditorId = `custom_table_${timestamp}`;
+                setTimeout(() => {
+                    const tableField = document.getElementById(tableEditorId);
+                    if (tableField) {
+                        new TableEditor(tableEditorId);
+                    }
+                }, 100);
+            }
+            
+            addToNavigation(sectionId, title);
+            document.getElementById('custom_section_title').value = '';
+            updateActiveNav();
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-custom-section')) {
+                const sectionId = e.target.getAttribute('data-section-id');
+                const section = document.querySelector(`[data-section-id="${sectionId}"]`);
+                if (section && confirm('Удалить этот блок?')) {
+                    const navItem = document.querySelector(`[data-nav-custom="custom-section-${sectionId}"]`);
+                    if (navItem) navItem.remove();
+                    section.remove();
+                }
+            }
+        });
+        
+        function addToNavigation(sectionId, title) {
+            const navContainer = document.querySelector('.form-navigation .nav-container');
+            if (!navContainer) return;
+            
+            const navItem = document.createElement('div');
+            navItem.className = 'nav-section';
+            navItem.setAttribute('data-nav-custom', sectionId);
+            navItem.innerHTML = `<a href="#${sectionId}" class="nav-item">${title.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</a>`;
+            
+            const publishNav = Array.from(navContainer.children).find(el => 
+                el.querySelector('a[href="#section-confluence"]')
+            );
+            
+            if (publishNav) {
+                navContainer.insertBefore(navItem, publishNav);
+            } else {
+                navContainer.appendChild(navItem);
+            }
+        }
+    }
+    */
+});
+
+// Обработка создания тега
+document.addEventListener('DOMContentLoaded', function() {
+    const createTagForm = document.getElementById('createTagForm');
+    if (createTagForm) {
+        createTagForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const formData = new FormData(this);
+            
+            try {
+                const response = await fetch('/api/tags', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    // Закрываем модальное окно
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('createTagModal'));
+                    if (modal) modal.hide();
+                    // Перезагружаем страницу для отображения нового тега
+                    location.reload();
+                } else {
+                    const errorData = await response.json();
+                    alert('Ошибка создания тега: ' + (errorData.detail || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка создания тега: ' + error.message);
+            }
+        });
+    }
+});
+
+</script>
+{% endblock %}

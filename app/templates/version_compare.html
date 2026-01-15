@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Сравнение версий - МНТ {{ document.id }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1>Сравнение версий</h1>
+        <p class="text-muted mb-0">МНТ: <strong>{{ document.title }}</strong></p>
+    </div>
+    <div>
+        <a href="/mnt/{{ document.id }}/versions" class="btn btn-outline-secondary">← К списку версий</a>
+        <a href="/mnt/{{ document.id }}/edit" class="btn btn-primary">К редактированию</a>
+    </div>
+</div>
+
+{% if version1 and version2 %}
+<div class="row mb-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Версия {{ version1.version_number }}</h5>
+                <small>{{ version1.created_at.strftime('%d.%m.%Y %H:%M:%S') if version1.created_at else 'N/A' }}</small>
+                <br><small>Автор: {{ version1.changed_by }}</small>
+            </div>
+            <div class="card-body">
+                <p><small>{{ version1.change_reason or 'Без описания' }}</small></p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Версия {{ version2.version_number }}</h5>
+                <small>{{ version2.created_at.strftime('%d.%m.%Y %H:%M:%S') if version2.created_at else 'N/A' }}</small>
+                <br><small>Автор: {{ version2.changed_by }}</small>
+            </div>
+            <div class="card-body">
+                <p><small>{{ version2.change_reason or 'Без описания' }}</small></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Изменения</h5>
+    </div>
+    <div class="card-body">
+        {% if changes %}
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th style="width: 200px;">Поле</th>
+                        <th>Тип изменения</th>
+                        <th style="width: 45%;">Было (Версия {{ version1.version_number }})</th>
+                        <th style="width: 45%;">Стало (Версия {{ version2.version_number }})</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for change in changes %}
+                    <tr>
+                        <td><strong>{{ change.field_name }}</strong><br><small class="text-muted">{{ change.field }}</small></td>
+                        <td>
+                            {% if change.type == 'added' %}
+                                <span class="badge bg-success">+ Добавлено</span>
+                            {% elif change.type == 'removed' %}
+                                <span class="badge bg-danger">- Удалено</span>
+                            {% elif change.type == 'changed' %}
+                                <span class="badge bg-warning text-dark">~ Изменено</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if change.old %}
+                                <div class="text-danger">
+                                    {% if change.old is string %}
+                                        <pre class="mb-0" style="white-space: pre-wrap; max-height: 200px; overflow-y: auto;">{{ change.old[:500] }}{% if change.old|length > 500 %}...{% endif %}</pre>
+                                    {% elif change.old is iterable and change.old is not string %}
+                                        <small>{{ change.old|length }} элементов</small>
+                                    {% else %}
+                                        {{ change.old }}
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if change.new %}
+                                <div class="text-success">
+                                    {% if change.new is string %}
+                                        <pre class="mb-0" style="white-space: pre-wrap; max-height: 200px; overflow-y: auto;">{{ change.new[:500] }}{% if change.new|length > 500 %}...{% endif %}</pre>
+                                    {% elif change.new is iterable and change.new is not string %}
+                                        <small>{{ change.new|length }} элементов</small>
+                                    {% else %}
+                                        {{ change.new }}
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            Изменений между версиями не обнаружено.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning">
+    Необходимо выбрать две версии для сравнения.
+</div>
+{% endif %}
+{% endblock %}

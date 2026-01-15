@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}История действий - МНТ {{ document.id }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1>История действий</h1>
+        <p class="text-muted mb-0">МНТ: <strong>{{ document.title }}</strong></p>
+    </div>
+    <div>
+        <a href="/mnt/{{ document.id }}/edit" class="btn btn-primary">← Вернуться к редактированию</a>
+        <a href="/mnt/list" class="btn btn-outline-secondary">К списку МНТ</a>
+    </div>
+</div>
+
+{% if history %}
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th style="width: 150px;">Дата и время</th>
+                        <th style="width: 150px;">Пользователь</th>
+                        <th style="width: 120px;">Действие</th>
+                        <th>Описание</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in history %}
+                    <tr>
+                        <td>
+                            <small>{{ item.created_at.strftime('%d.%m.%Y %H:%M:%S') if item.created_at else 'N/A' }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ item.user_name }}</strong>
+                        </td>
+                        <td>
+                            {% if item.action_type == 'created' %}
+                                <span class="badge bg-success">{{ item.action_name }}</span>
+                            {% elif item.action_type == 'updated' %}
+                                <span class="badge bg-primary">{{ item.action_name }}</span>
+                            {% elif item.action_type == 'published' %}
+                                <span class="badge bg-info">{{ item.action_name }}</span>
+                            {% elif item.action_type == 'publish_failed' %}
+                                <span class="badge bg-danger">{{ item.action_name }}</span>
+                            {% elif item.action_type == 'status_changed' %}
+                                <span class="badge bg-warning">{{ item.action_name }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ item.action_name }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>{{ item.action_description or '-' }}</div>
+                            {% if item.details %}
+                                {% if item.details.get('page_id') %}
+                                    <small class="text-muted">Page ID: {{ item.details.page_id }}</small>
+                                    {% if item.details.get('page_url') %}
+                                        <br><a href="{{ item.details.page_url }}" target="_blank" class="text-decoration-none">🔗 Открыть в Confluence</a>
+                                    {% endif %}
+                                {% endif %}
+                                {% if item.details.get('space') %}
+                                    <br><small class="text-muted">Space: {{ item.details.space }}</small>
+                                {% endif %}
+                                {% if item.details.get('error') %}
+                                    <br><small class="text-danger">Ошибка: {{ item.details.error[:100] }}{% if item.details.error|length > 100 %}...{% endif %}</small>
+                                {% endif %}
+                                
+                                {# Отображение изменений #}
+                                {% if item.action_type == 'updated' and item.details.get('changes') %}
+                                    <div class="mt-2">
+                                        <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#changes-{{ item.id }}" aria-expanded="false">
+                                            📝 Показать изменения ({{ item.details.get('changes_count', 0) }})
+                                        </button>
+                                        <div class="collapse mt-2" id="changes-{{ item.id }}">
+                                            <div class="card card-body bg-light">
+                                                <small>
+                                                    {% for field_key, change in item.details.changes.items() %}
+                                                        <div class="mb-2 pb-2 border-bottom">
+                                                            <strong>{{ change.field_name or field_key }}:</strong>
+                                                            {% if change.type == 'added' %}
+                                                                <span class="text-success">+ Добавлено</span>
+                                                                {% if change.new %}
+                                                                    <br><span class="text-muted">{{ change.new[:100] }}{% if change.new|length > 100 %}...{% endif %}</span>
+                                                                {% endif %}
+                                                            {% elif change.type == 'removed' %}
+                                                                <span class="text-danger">- Удалено</span>
+                                                                {% if change.old %}
+                                                                    <br><span class="text-muted text-decoration-line-through">{{ change.old[:100] }}{% if change.old|length > 100 %}...{% endif %}</span>
+                                                                {% endif %}
+                                                            {% elif change.type == 'changed' %}
+                                                                <span class="text-primary">~ Изменено</span>
+                                                                {% if change.old %}
+                                                                    <br><span class="text-danger text-decoration-line-through">Было: {{ change.old[:80] }}{% if change.old|length > 80 %}...{% endif %}</span>
+                                                                {% endif %}
+                                                                {% if change.new %}
+                                                                    <br><span class="text-success">Стало: {{ change.new[:80] }}{% if change.new|length > 80 %}...{% endif %}</span>
+                                                                {% endif %}
+                                                            {% endif %}
+                                                        </div>
+                                                    {% endfor %}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+    История действий пуста.
+</div>
+{% endif %}
+{% endblock %}

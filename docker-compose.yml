@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  confluence:
+    image: atlassian/confluence-server:8.7.1
+    container_name: confluence-test
+    ports:
+      - "8090:8090"
+    environment:
+      ATL_TOMCAT_MGMTPORT: 8091
+      ATL_TOMCAT_PORT: 8090
+      ATL_TOMCAT_CONTEXTPATH: /
+    volumes:
+      - confluence-data:/var/atlassian/application-data/confluence
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  confluence-data:
+    driver: local

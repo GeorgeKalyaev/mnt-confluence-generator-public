@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Корзина - МНТ Generator{% endblock %}
+
+{% block content %}
+<!-- Уведомления об успехе/ошибках -->
+{% if success_message %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <strong>✓ Успешно!</strong> МНТ восстановлен.
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+{% if error_message %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <strong>✗ Ошибка!</strong> {{ error_message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>🗑️ Корзина</h1>
+    <div>
+        <a href="/mnt/list" class="btn btn-outline-secondary">← Назад к списку</a>
+    </div>
+</div>
+
+<div class="alert alert-warning">
+    <strong>ℹ️ Информация:</strong> Здесь отображаются удаленные МНТ. Они будут окончательно удалены через 30 дней после удаления.
+    За это время вы можете восстановить любой МНТ, и он будет пересоздан в Confluence (если был опубликован).
+</div>
+
+<!-- Поиск -->
+<form method="get" action="/mnt/trash" class="mb-4">
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5 class="mb-0">Поиск</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label for="search" class="form-label">Поиск</label>
+                    <input type="text" 
+                           class="form-control" 
+                           id="search"
+                           name="search" 
+                           placeholder="Название, проект, автор..." 
+                           value="{{ search_query }}">
+                </div>
+                
+                <div class="col-md-2">
+                    <label for="sort_by" class="form-label">Сортировать по</label>
+                    <select class="form-select" id="sort_by" name="sort_by">
+                        <option value="deleted_at" {% if sort_by == 'deleted_at' %}selected{% endif %}>Дате удаления</option>
+                        <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Дате создания</option>
+                        <option value="updated_at" {% if sort_by == 'updated_at' %}selected{% endif %}>Последнему изменению</option>
+                        <option value="title" {% if sort_by == 'title' %}selected{% endif %}>Названию</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-2">
+                    <label for="sort_order" class="form-label">Порядок</label>
+                    <select class="form-select" id="sort_order" name="sort_order">
+                        <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>По убыванию</option>
+                        <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>По возрастанию</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">Применить фильтры</button>
+                {% if search_query %}
+                <a href="/mnt/trash" class="btn btn-outline-secondary">Сбросить</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="alert alert-info">
+    Всего удаленных МНТ: <strong>{{ total }}</strong>
+    {% if search_query %}
+    (найдено по фильтрам)
+    {% endif %}
+</div>
+
+{% if documents %}
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Проект</th>
+                <th>Автор</th>
+                <th>Дата создания</th>
+                <th>Дата удаления</th>
+                <th>Статус на момент удаления</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for doc in documents %}
+            <tr>
+                <td>{{ doc.id }}</td>
+                <td>
+                    <strong>{{ doc.title or 'Без названия' }}</strong>
+                    {% if doc.data_json.tags %}
+                    <div class="mt-1">
+                        {% for tag in doc.data_json.tags %}
+                        <span class="badge bg-secondary me-1">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </td>
+                <td>{{ doc.project }}</td>
+                <td>{{ doc.author }}</td>
+                <td>
+                    {% if doc.created_at %}
+                    {{ doc.created_at.strftime('%d.%m.%Y %H:%M') }}
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if doc.deleted_at %}
+                    <strong class="text-danger">{{ doc.deleted_at.strftime('%d.%m.%Y %H:%M') }}</strong>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if doc.status == 'published' %}
+                    <span class="badge bg-success">Опубликован</span>
+                    {% elif doc.status == 'draft' %}
+                    <span class="badge bg-secondary">Черновик</span>
+                    {% elif doc.status == 'error' %}
+                    <span class="badge bg-danger">Ошибка</span>
+                    {% else %}
+                    <span class="badge bg-secondary">{{ doc.status }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <form method="post" action="/mnt/{{ doc.id }}/restore" style="display: inline;" 
+                          onsubmit="return confirm('Вы уверены, что хотите восстановить этот МНТ? Страница в Confluence будет пересоздана, если она была опубликована.');">
+                        <button type="submit" class="btn btn-sm btn-success" title="Восстановить МНТ">
+                            ♻️ Восстановить
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Пагинация -->
+{% if total > limit %}
+<nav aria-label="Навигация по страницам">
+    <ul class="pagination justify-content-center">
+        {% if skip > 0 %}
+        <li class="page-item">
+            <a class="page-link" href="?skip={{ skip - limit }}&limit={{ limit }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}{% if sort_order %}&sort_order={{ sort_order }}{% endif %}">Предыдущая</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">Предыдущая</span>
+        </li>
+        {% endif %}
+        
+        {% set current_page = (skip // limit) + 1 %}
+        {% set total_pages = (total // limit) + (1 if total % limit > 0 else 0) %}
+        
+        {% for page_num in range(1, total_pages + 1) %}
+            {% if page_num == current_page %}
+            <li class="page-item active">
+                <span class="page-link">{{ page_num }}</span>
+            </li>
+            {% elif page_num <= 3 or page_num >= total_pages - 2 or (page_num >= current_page - 1 and page_num <= current_page + 1) %}
+            <li class="page-item">
+                <a class="page-link" href="?skip={{ (page_num - 1) * limit }}&limit={{ limit }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}{% if sort_order %}&sort_order={{ sort_order }}{% endif %}">{{ page_num }}</a>
+            </li>
+            {% elif page_num == 4 and current_page > 5 %}
+            <li class="page-item disabled">
+                <span class="page-link">...</span>
+            </li>
+            {% elif page_num == total_pages - 3 and current_page < total_pages - 4 %}
+            <li class="page-item disabled">
+                <span class="page-link">...</span>
+            </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if skip + limit < total %}
+        <li class="page-item">
+            <a class="page-link" href="?skip={{ skip + limit }}&limit={{ limit }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}{% if sort_order %}&sort_order={{ sort_order }}{% endif %}">Следующая</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">Следующая</span>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="alert alert-info">
+    <strong>Корзина пуста.</strong> Удаленные МНТ будут отображаться здесь в течение 30 дней.
+</div>
+{% endif %}
+
+{% endblock %}
