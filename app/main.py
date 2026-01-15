@@ -377,6 +377,72 @@ async def api_publish_mnt(mnt_id: int, db: Session = Depends(get_db)):
 
 # ==================== Form Handlers ====================
 
+def update_history_changes_table(
+    current_history: Optional[str],
+    author: str,
+    description: str,
+    is_first_entry: bool = False
+) -> str:
+    """
+    Обновляет таблицу истории изменений.
+    
+    Args:
+        current_history: Текущая история изменений (может быть None или пустая)
+        author: Автор изменений (Фамилия И.О.)
+        description: Описание изменений
+        is_first_entry: True если это первая запись при создании МНТ
+    
+    Returns:
+        Обновленная история изменений в формате таблицы
+    """
+    today = datetime.now().strftime("%d.%m.%Y")
+    
+    if not current_history or not current_history.strip():
+        # Создаем первую запись
+        version = "0.1"
+        if is_first_entry:
+            description = description or "Заполнены основные пункты"
+        header = "Дата|Версия|Описание|Автор"
+        first_entry = f"{today}|{version}|{description}|{author}"
+        return f"{header}\n{first_entry}"
+    
+    # Парсим текущую историю
+    lines = current_history.strip().split('\n')
+    if len(lines) < 2:
+        # Если только заголовок, создаем первую запись
+        version = "0.1"
+        header = lines[0] if lines else "Дата|Версия|Описание|Автор"
+        first_entry = f"{today}|{version}|{description}|{author}"
+        return f"{header}\n{first_entry}"
+    
+    # Находим последнюю версию
+    last_version = "0.1"
+    version_found = False
+    for line in reversed(lines[1:]):  # Пропускаем заголовок
+        if '|' in line and line.strip():
+            parts = line.split('|')
+            if len(parts) >= 2:
+                try:
+                    version_str = parts[1].strip()
+                    version_parts = version_str.split('.')
+                    if len(version_parts) == 2:
+                        major = int(version_parts[0])
+                        minor = int(version_parts[1]) + 1
+                        last_version = f"{major}.{minor}"
+                        version_found = True
+                        break
+                except (ValueError, IndexError):
+                    continue
+    
+    # Если версия не найдена, начинаем с 0.2
+    if not version_found:
+        last_version = "0.2"
+    
+    # Добавляем новую запись
+    new_entry = f"{today}|{last_version}|{description}|{author}"
+    return current_history + "\n" + new_entry
+
+
 @app.post("/mnt/create")
 async def handle_create_form(
     request: Request,
@@ -387,6 +453,7 @@ async def handle_create_form(
     author: str = Form(...),  # Для истории изменений
     # Раздел 1: История изменений
     history_changes_table: Optional[str] = Form(None),
+    change_description: Optional[str] = Form(None),  # Описание изменений для истории
     # Раздел 2: Лист согласования
     approval_list_table: Optional[str] = Form(None),
     # Раздел 3: Сокращения и терминология
@@ -562,6 +629,39 @@ async def handle_create_form(
     title_for_db = project_name
     project_for_db = project_name
     
+    # Автоматически обновляем историю изменений при создании МНТ
+    # При первом создании всегда создается первая запись
+    # Если пользователь не указал описание - используем значение по умолчанию
+    change_desc = (change_description.strip() if change_description and change_description.strip() else "Заполнены основные пункты")
+    
+    # При создании МНТ: если история уже есть в форме (от JavaScript) - используем её как есть
+    # НЕ вызываем update_history_changes_table, чтобы не добавить дубликат
+    if history_changes_table and history_changes_table.strip():
+        # Проверяем, что есть хотя бы заголовок и одна строка данных
+        lines = [l.strip() for l in history_changes_table.strip().split('\n') if l.strip()]
+        if len(lines) >= 2:
+            # Есть заголовок и хотя бы одна строка - используем как есть
+            logger.debug(f"CREATE: Используем историю из формы (строк: {len(lines)-1})")
+            data["history_changes_table"] = history_changes_table
+        else:
+            # Только заголовок - создаем первую запись
+            logger.debug("CREATE: Только заголовок в форме, создаем первую запись")
+            data["history_changes_table"] = update_history_changes_table(
+                current_history=None,
+                author=author,
+                description=change_desc,
+                is_first_entry=True
+            )
+    else:
+        # История пуста - создаем первую запись
+        logger.debug("CREATE: История пуста, создаем первую запись")
+        data["history_changes_table"] = update_history_changes_table(
+            current_history=None,
+            author=author,
+            description=change_desc,
+            is_first_entry=True
+        )
+    
     # Обрабатываем теги - разбиваем строку через запятую и сохраняем как список в JSON
     if tags:
         tag_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
@@ -639,33 +739,8 @@ async def handle_create_form(
             )
             logger.debug(f"Контент сгенерирован, длина: {len(content)} символов")
             
-            # Добавляем запись в историю изменений при первой публикации
-            if not history_changes_table:
-                # Создаем начальную запись
-                today = datetime.now().strftime("%d.%m.%Y")
-                history_entry = f"Дата|Версия|Описание|Автор\n{today}|0.1|Создание документа|{author}"
-                data["history_changes_table"] = history_entry
-            else:
-                # Добавляем новую запись к существующей истории
-                today = datetime.now().strftime("%d.%m.%Y")
-                # Пытаемся определить следующую версию
-                lines = history_changes_table.split('\n')
-                last_version = "0.1"
-                if len(lines) > 1:
-                    last_line = lines[-1]
-                    if '|' in last_line:
-                        parts = last_line.split('|')
-                        if len(parts) >= 2:
-                            try:
-                                version_parts = parts[1].strip().split('.')
-                                if len(version_parts) == 2:
-                                    minor = int(version_parts[1]) + 1
-                                    last_version = f"{version_parts[0]}.{minor}"
-                            except:
-                                pass
-                
-                new_entry = f"{today}|{last_version}|Обновление документа|{author}"
-                data["history_changes_table"] = history_changes_table + "\n" + new_entry
+            # История изменений уже обновлена выше при сохранении (при создании МНТ)
+            # Используем текущую историю из data
             
             # Сначала публикуем в Confluence
             logger.debug(f"Вызываем confluence_client.create_page с параметрами:")
@@ -761,6 +836,7 @@ async def handle_edit_form(
     author: str = Form(...),  # Для истории изменений
     # Раздел 1: История изменений
     history_changes_table: Optional[str] = Form(None),
+    change_description: Optional[str] = Form(None),  # Описание изменений для истории
     # Раздел 2: Лист согласования
     approval_list_table: Optional[str] = Form(None),
     # Раздел 3: Сокращения и терминология
@@ -966,6 +1042,58 @@ async def handle_edit_form(
     # Автосохранение определяется по отсутствию параметра publish в форме
     is_autosave = not publish or str(publish).strip() == ""
     
+    # Автоматически обновляем историю изменений при редактировании (кроме автосохранения)
+    if not is_autosave:
+        # Проверяем, есть ли изменения в данных
+        has_data_changes = False
+        if document_before:
+            old_data = document_before.get("data_json", {})
+            changes = compare_mnt_data(old_data, data)
+            has_data_changes = len(changes) > 0
+        
+        if has_data_changes:
+            # Есть изменения - обновляем историю
+            # Если история изменений передана из формы - используем её
+            # (JavaScript добавляет новую строку только если пользователь ввел автора)
+            form_history = history_changes_table or ""
+            
+            # Получаем старую историю для сравнения
+            old_history = ""
+            if document_before:
+                old_history = document_before.get("data_json", {}).get("history_changes_table", "") or ""
+            
+            # Если история из формы передана - проверяем, добавил ли пользователь новую строку
+            # Новая строка добавляется только если пользователь ввел автора через JavaScript
+            # Сравниваем количество строк: если в форме больше - значит добавилась новая строка
+            
+            if form_history and form_history.strip():
+                form_lines = [l.strip() for l in form_history.strip().split('\n') if l.strip() and '|' in l]
+                old_lines = [l.strip() for l in old_history.strip().split('\n') if l.strip() and '|' in l] if old_history else []
+                
+                # Если в форме больше строк - значит пользователь добавил новую строку
+                if len(form_lines) > len(old_lines):
+                    data["history_changes_table"] = form_history
+                else:
+                    # История не изменилась - используем старую историю (не добавляем новую строку автоматически)
+                    data["history_changes_table"] = old_history or form_history or ""
+            else:
+                # История из формы пуста - используем старую историю (не добавляем новую строку автоматически)
+                data["history_changes_table"] = old_history or ""
+        else:
+            # Изменений нет - не обновляем историю, используем текущую
+            if document_before:
+                data["history_changes_table"] = document_before.get("data_json", {}).get("history_changes_table") or history_changes_table or ""
+            else:
+                data["history_changes_table"] = history_changes_table or ""
+    else:
+        # При автосохранении не обновляем историю - используем текущую из документа или формы
+        if document_before:
+            # Берем историю из текущего документа
+            data["history_changes_table"] = document_before.get("data_json", {}).get("history_changes_table") or history_changes_table or ""
+        else:
+            # Если документа нет (не должно быть при редактировании), используем из формы
+            data["history_changes_table"] = history_changes_table or ""
+    
     # Получаем текущий статус МНТ
     current_status = document_before.get("status") if document_before else "draft"
     
@@ -1056,34 +1184,8 @@ async def handle_edit_form(
             if information_architecture_image_file and information_architecture_image_file.filename:
                 information_architecture_image_filename = information_architecture_image_file.filename
             
-            # Добавляем запись в историю изменений при публикации
-            current_history = history_changes_table or ""
-            today = datetime.now().strftime("%d.%m.%Y")
-            # Пытаемся определить следующую версию
-            last_version = "0.1"
-            if current_history:
-                lines = current_history.split('\n')
-                if len(lines) > 1:
-                    last_line = lines[-1]
-                    if '|' in last_line:
-                        parts = last_line.split('|')
-                        if len(parts) >= 2:
-                            try:
-                                version_parts = parts[1].strip().split('.')
-                                if len(version_parts) == 2:
-                                    minor = int(version_parts[1]) + 1
-                                    last_version = f"{version_parts[0]}.{minor}"
-                            except:
-                                pass
-            
-            new_entry = f"{today}|{last_version}|Обновление документа|{author}"
-            if current_history:
-                updated_history = current_history + "\n" + new_entry
-            else:
-                # Создаем первую запись
-                updated_history = f"Дата|Версия|Описание|Автор\n{new_entry}"
-            
-            data["history_changes_table"] = updated_history
+            # История изменений уже обновлена выше при сохранении
+            # При публикации используем текущую историю из data
             
             # Генерируем контент
             content = render_mnt_to_confluence_storage(

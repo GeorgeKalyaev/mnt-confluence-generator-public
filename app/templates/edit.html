@@ -261,9 +261,9 @@
                        value="{{ data.system_version if data else '' }}" placeholder="Например: 1.0">
             </div>
             <div class="col-md-6 mb-3">
-                <label for="author" class="form-label">Автор (для истории изменений) <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="author" name="author" required 
-                       value="{{ document.author }}">
+                <label for="author" class="form-label">Автор (для истории изменений) <span class="text-danger" id="author_required_star" style="display: none;">*</span></label>
+                <input type="text" class="form-control" id="author" name="author" 
+                       placeholder="Укажите ФИО автора для добавления записи в историю изменений (требуется только при наличии изменений)">
             </div>
         </div>
     </div>
@@ -272,9 +272,29 @@
     <div class="form-section" id="section-1">
         <h3>1. История изменений</h3>
         <div class="mb-3">
-            <label for="history_changes_table" class="form-label">Таблица истории изменений</label>
-            <small class="text-muted d-block mb-2">Формат: Дата|Версия|Описание|Автор (каждая строка - отдельная запись)</small>
-            <textarea class="form-control" id="history_changes_table" name="history_changes_table" rows="6">{{ data.history_changes_table if data else '' }}</textarea>
+            <label class="form-label">Таблица истории изменений</label>
+            <small class="text-muted d-block mb-2">Если вы внесли изменения в МНТ, укажите ФИО автора в поле "Автор" (в разделе "Заголовок документа") - новая строка добавится автоматически. Затем укажите описание изменений в новой строке. Если изменений не было, можете опубликовать МНТ без заполнения автора и описания.</small>
+            
+            <!-- Скрытое поле для отправки данных на сервер -->
+            <input type="hidden" id="history_changes_table" name="history_changes_table" value="{{ data.history_changes_table if data else '' }}">
+            
+            <!-- Визуальная таблица с редактируемым полем описания -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="history_changes_visual_table">
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Дата</th>
+                            <th style="width: 10%;">Версия</th>
+                            <th style="width: 50%;">Описание</th>
+                            <th style="width: 20%;">Автор</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history_changes_tbody">
+                        <!-- Заполняется автоматически через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <small class="text-muted d-block mt-1">В последней строке можно редактировать только поле "Описание"</small>
         </div>
     </div>
 
@@ -283,8 +303,31 @@
         <h3>2. Лист согласования</h3>
         <div class="mb-3">
             <label for="approval_list_table" class="form-label">Таблица листа согласования</label>
-            <small class="text-muted d-block mb-2">Формат: ФИО|Должность|Подпись|Дата (каждая строка - отдельная запись)</small>
-            <textarea class="form-control" id="approval_list_table" name="approval_list_table" rows="5">{{ data.approval_list_table if data else '' }}</textarea>
+            <small class="text-muted d-block mb-2">Поля ФИО, Должность и Дата обязательны для заполнения. Подпись заполняется позже. Для добавления новой строки нажмите кнопку "Добавить строку".</small>
+            
+            <!-- Скрытое поле для отправки данных на сервер -->
+            <input type="hidden" id="approval_list_table" name="approval_list_table" value="{{ data.approval_list_table if data else '' }}">
+            
+            <!-- Визуальная таблица с input полями -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="approval_list_visual_table">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">ФИО <span class="text-danger">*</span></th>
+                            <th style="width: 25%;">Должность <span class="text-danger">*</span></th>
+                            <th style="width: 25%;">Подпись</th>
+                            <th style="width: 20%;">Дата <span class="text-danger">*</span></th>
+                            <th style="width: 5%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="approval_list_tbody">
+                        <!-- Заполняется автоматически через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add_approval_row_btn">
+                <i class="bi bi-plus-circle"></i> Добавить строку
+            </button>
         </div>
     </div>
 
@@ -695,6 +738,424 @@
 <script src="/static/js/auto-save.js"></script>
 <script src="/static/js/image-preview.js"></script>
 <script src="/static/js/unsaved-changes.js"></script>
+<script>
+// Работа с таблицей истории изменений при редактировании
+document.addEventListener('DOMContentLoaded', function() {
+    const authorInput = document.getElementById('author');
+    const historyTableHidden = document.getElementById('history_changes_table');
+    const historyTableTbody = document.getElementById('history_changes_tbody');
+    
+    if (!historyTableHidden || !historyTableTbody) return;
+    
+    // Исходное значение автора - всегда пустое при редактировании
+    let originalAuthor = '';
+    let newRowAdded = false; // Флаг, что новая строка уже добавлена
+    let historyLoaded = false; // Флаг, что история уже загружена
+    
+    // Загружаем существующие строки истории из скрытого поля
+    function loadExistingHistory() {
+        const historyData = historyTableHidden.value.trim();
+        if (!historyData) {
+            historyTableTbody.innerHTML = '';
+            historyLoaded = true;
+            return;
+        }
+        
+        const lines = historyData.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+            historyTableTbody.innerHTML = '';
+            historyLoaded = true;
+            return;
+        }
+        
+        // Пропускаем заголовок (первая строка)
+        const rows = [];
+        for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split('|').map(p => p.trim());
+            if (parts.length >= 4) {
+                rows.push({
+                    date: parts[0],
+                    version: parts[1],
+                    description: parts[2],
+                    author: parts[3]
+                });
+            }
+        }
+        
+        // Рендерим существующие строки (все readonly - без возможности редактирования)
+        historyTableTbody.innerHTML = rows.map((row, index) => {
+            return `
+                <tr>
+                    <td>${row.date}</td>
+                    <td>${row.version}</td>
+                    <td>${row.description}</td>
+                    <td>${row.author}</td>
+                </tr>
+            `;
+        }).join('');
+        
+        historyLoaded = true;
+        updateHiddenField();
+    }
+    
+    // Функция для добавления/обновления новой строки при вводе автора
+    function addOrUpdateNewHistoryRow() {
+        if (!historyLoaded) return; // Ждем загрузки истории
+        
+        const author = authorInput ? authorInput.value.trim() : '';
+        if (!author) {
+            // Если автор пустой, удаляем новую строку (если она была добавлена)
+            const lastRow = historyTableTbody.querySelector('tr:last-child');
+            if (lastRow && lastRow.querySelector('input[name="history_description_new"]')) {
+                lastRow.remove();
+                newRowAdded = false;
+                updateHiddenField();
+            }
+            return;
+        }
+        
+        // Проверяем, есть ли уже новая строка (с input для описания)
+        let newRow = historyTableTbody.querySelector('tr:has(input[name="history_description_new"])');
+        
+        if (!newRow) {
+            // Новой строки нет - создаем её
+            // Форматируем текущую дату
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const year = today.getFullYear();
+            const dateStr = `${day}.${month}.${year}`;
+            
+            // Определяем следующую версию на основе существующих строк
+            const existingRows = historyTableTbody.querySelectorAll('tr');
+            let nextVersion = '0.2';
+            
+            if (existingRows.length > 0) {
+                // Находим последнюю версию из существующих строк (не новой)
+                for (let i = existingRows.length - 1; i >= 0; i--) {
+                    const row = existingRows[i];
+                    if (!row.querySelector('input[name="history_description_new"]')) {
+                        const versionCell = row.querySelectorAll('td')[1];
+                        if (versionCell) {
+                            const lastVersion = versionCell.textContent.trim();
+                            const versionParts = lastVersion.split('.');
+                            if (versionParts.length === 2) {
+                                try {
+                                    const major = parseInt(versionParts[0]);
+                                    const minor = parseInt(versionParts[1]) + 1;
+                                    nextVersion = `${major}.${minor}`;
+                                } catch (e) {
+                                    nextVersion = '0.2';
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // Добавляем новую строку в конец таблицы
+            newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td>${dateStr}</td>
+                <td>${nextVersion}</td>
+                <td>
+                    <input type="text" 
+                           class="form-control form-control-sm" 
+                           name="history_description_new" 
+                           value=""
+                           placeholder="Опишите изменения">
+                </td>
+                <td></td>
+            `;
+            historyTableTbody.appendChild(newRow);
+            newRowAdded = true;
+        }
+        
+        // Обновляем автора в новой строке (он обновляется при каждом изменении)
+        const authorCell = newRow.querySelectorAll('td')[3];
+        if (authorCell) {
+            authorCell.textContent = author;
+        }
+        
+        updateHiddenField();
+    }
+    
+    // Функция для обновления скрытого поля из визуальной таблицы
+    function updateHiddenField() {
+        if (!historyTableTbody || !historyTableHidden) return;
+        
+        const rows = historyTableTbody.querySelectorAll('tr');
+        if (rows.length === 0) {
+            historyTableHidden.value = '';
+            return;
+        }
+        
+        const parts = [];
+        parts.push('Дата|Версия|Описание|Автор'); // Заголовок
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 4) {
+                const date = cells[0].textContent.trim();
+                const version = cells[1].textContent.trim();
+                const descInput = cells[2].querySelector('input');
+                const description = descInput ? descInput.value.trim() : cells[2].textContent.trim();
+                const author = cells[3].textContent.trim();
+                parts.push(`${date}|${version}|${description}|${author}`);
+            }
+        });
+        
+        historyTableHidden.value = parts.join('\n');
+    }
+    
+    // Обновляем скрытое поле при изменении описания
+    if (historyTableTbody) {
+        historyTableTbody.addEventListener('input', function(e) {
+            if (e.target.name && e.target.name.startsWith('history_description')) {
+                updateHiddenField();
+            }
+        });
+    }
+    
+    // Отслеживаем ввод автора (добавляем/обновляем строку при вводе)
+    if (authorInput) {
+        authorInput.addEventListener('input', function() {
+            addOrUpdateNewHistoryRow();
+        });
+    }
+    
+    // Загружаем существующую историю при загрузке страницы
+    loadExistingHistory();
+    
+    // Обновляем скрытое поле перед отправкой формы
+    const form = document.querySelector('form[action*="/mnt/"]');
+    if (form) {
+        form.addEventListener('submit', function() {
+            updateHiddenField();
+        });
+    }
+});
+</script>
+
+<!-- JavaScript для таблицы листа согласования -->
+<script>
+// Управление таблицей листа согласования
+document.addEventListener('DOMContentLoaded', function() {
+    const approvalTableHidden = document.getElementById('approval_list_table');
+    const approvalTableTbody = document.getElementById('approval_list_tbody');
+    const addApprovalRowBtn = document.getElementById('add_approval_row_btn');
+    
+    if (!approvalTableHidden || !approvalTableTbody) {
+        console.error('Approval table elements not found');
+        return;
+    }
+    
+    console.log('Approval table script loaded, button:', addApprovalRowBtn);
+    
+    // Функция для форматирования даты в формат DD.MM.YYYY
+    function formatDate(date) {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}.${month}.${year}`;
+    }
+    
+    // Функция для преобразования даты в формат YYYY-MM-DD для input[type="date"]
+    function formatDateForInput(date) {
+        if (!date) {
+            const today = new Date();
+            return today.toISOString().split('T')[0]; // YYYY-MM-DD
+        }
+        // Если дата уже в формате YYYY-MM-DD, возвращаем как есть
+        if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            return date;
+        }
+        // Если дата в формате DD.MM.YYYY, преобразуем в YYYY-MM-DD
+        if (date.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
+            const [day, month, year] = date.split('.');
+            return `${year}-${month}-${day}`;
+        }
+        // Если это объект Date, преобразуем
+        if (date instanceof Date) {
+            return date.toISOString().split('T')[0];
+        }
+        // По умолчанию - текущая дата
+        return new Date().toISOString().split('T')[0];
+    }
+    
+    // Функция для создания новой строки в таблице
+    function createApprovalRow(rowData = { fio: '', position: '', signature: '', date: null }) {
+        const row = document.createElement('tr');
+        const dateValue = formatDateForInput(rowData.date);
+        row.innerHTML = `
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm approval-fio" 
+                       name="approval_fio[]" 
+                       value="${rowData.fio || ''}"
+                       placeholder="Фамилия И.О."
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm approval-position" 
+                       name="approval_position[]" 
+                       value="${rowData.position || ''}"
+                       placeholder="Должность"
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm approval-signature" 
+                       name="approval_signature[]" 
+                       value="${rowData.signature || ''}"
+                       placeholder="Подпись (необязательно)">
+            </td>
+            <td>
+                <input type="date" 
+                       class="form-control form-control-sm approval-date" 
+                       name="approval_date[]" 
+                       value="${dateValue}"
+                       required>
+            </td>
+            <td>
+                <button type="button" 
+                        class="btn btn-sm btn-outline-danger remove-approval-row" 
+                        title="Удалить строку">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        return row;
+    }
+    
+    // Функция для загрузки существующих данных
+    function loadExistingApprovalData() {
+        const approvalData = approvalTableHidden.value.trim();
+        
+        if (!approvalData) {
+            // Если данных нет - добавляем одну пустую строку по умолчанию
+            const defaultRow = createApprovalRow();
+            approvalTableTbody.appendChild(defaultRow);
+            updateApprovalHiddenField();
+            return;
+        }
+        
+        const lines = approvalData.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+            // Только заголовок или пусто - добавляем одну пустую строку
+            const defaultRow = createApprovalRow();
+            approvalTableTbody.appendChild(defaultRow);
+            updateApprovalHiddenField();
+            return;
+        }
+        
+        // Пропускаем заголовок (первая строка)
+        for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split('|').map(p => p.trim());
+            if (parts.length >= 4) {
+                const rowData = {
+                    fio: parts[0] || '',
+                    position: parts[1] || '',
+                    signature: parts[2] || '',
+                    date: parts[3] || null // formatDateForInput обработает null и преобразует в нужный формат
+                };
+                const row = createApprovalRow(rowData);
+                approvalTableTbody.appendChild(row);
+            }
+        }
+        
+        updateApprovalHiddenField();
+    }
+    
+    // Функция для обновления скрытого поля из визуальной таблицы
+    function updateApprovalHiddenField() {
+        const rows = approvalTableTbody.querySelectorAll('tr');
+        if (rows.length === 0) {
+            approvalTableHidden.value = '';
+            return;
+        }
+        
+        const parts = [];
+        parts.push('ФИО|Должность|Подпись|Дата'); // Заголовок
+        
+        rows.forEach(row => {
+            const fioInput = row.querySelector('.approval-fio');
+            const positionInput = row.querySelector('.approval-position');
+            const signatureInput = row.querySelector('.approval-signature');
+            const dateInput = row.querySelector('.approval-date');
+            
+            if (fioInput && positionInput && signatureInput && dateInput) {
+                const fio = fioInput.value.trim();
+                const position = positionInput.value.trim();
+                const signature = signatureInput.value.trim();
+                let date = dateInput.value.trim();
+                
+                // Если дата в формате YYYY-MM-DD, преобразуем в DD.MM.YYYY
+                if (date && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    const [year, month, day] = date.split('-');
+                    date = `${day}.${month}.${year}`;
+                }
+                
+                parts.push(`${fio}|${position}|${signature}|${date}`);
+            }
+        });
+        
+        approvalTableHidden.value = parts.join('\n');
+    }
+    
+    // Обработчик добавления новой строки
+    if (addApprovalRowBtn) {
+        console.log('Adding click handler to approval row button');
+        addApprovalRowBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add approval row button clicked');
+            const newRow = createApprovalRow();
+            approvalTableTbody.appendChild(newRow);
+            updateApprovalHiddenField();
+        });
+    } else {
+        console.error('Add approval row button not found!');
+    }
+    
+    // Обработчик удаления строки
+    approvalTableTbody.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-approval-row')) {
+            const row = e.target.closest('tr');
+            if (row) {
+                // Не позволяем удалить последнюю строку
+                if (approvalTableTbody.querySelectorAll('tr').length > 1) {
+                    row.remove();
+                    updateApprovalHiddenField();
+                } else {
+                    alert('Должна быть хотя бы одна строка в таблице');
+                }
+            }
+        }
+    });
+    
+    // Обновляем скрытое поле при изменении полей
+    approvalTableTbody.addEventListener('input', function() {
+        updateApprovalHiddenField();
+    });
+    
+    approvalTableTbody.addEventListener('change', function() {
+        updateApprovalHiddenField();
+    });
+    
+    // Загружаем существующие данные при загрузке страницы
+    loadExistingApprovalData();
+    
+    // Обновляем скрытое поле перед отправкой формы
+    const form = document.querySelector('form[action*="/mnt/"]');
+    if (form) {
+        form.addEventListener('submit', function() {
+            updateApprovalHiddenField();
+        });
+    }
+});
+</script>
 {% if unpublished_changes and unpublished_changes|length > 0 %}
 <script id="unpublished-changes-data" type="application/json">{{ unpublished_changes|tojson|safe }}</script>
 <script src="/static/js/highlight-changes.js"></script>
@@ -712,9 +1173,10 @@ console.log('unpublished_changes:', {{ unpublished_changes|tojson|safe if unpubl
 // Инициализация редакторов таблиц для полей, где это нужно
 document.addEventListener('DOMContentLoaded', function() {
     // Инициализируем редакторы таблиц
+    // history_changes_table - НЕ редактируется, заполняется автоматически
+    // approval_list_table - визуальная таблица с input полями
     const tableFields = [
-        'history_changes_table',
-        'approval_list_table',
+        // 'approval_list_table', // Убрали, т.к. теперь визуальная таблица
         'abbreviations_table',
         'terminology_table',
         'risks_table',
