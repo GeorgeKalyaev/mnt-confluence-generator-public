@@ -512,8 +512,31 @@
         <h4 class="mt-3 mb-3" id="section-8-2">8.2 Сравнение конфигураций промышленной среды и тестового стенда</h4>
         <div class="mb-3">
             <label for="stand_comparison_table" class="form-label">Таблица сравнения конфигураций</label>
-            <small class="text-muted d-block mb-2">Формат: Система|Параметр|Значение на контуре|Значение на продуктивной среде (каждая строка - отдельная запись)</small>
-            <textarea class="form-control" id="stand_comparison_table" name="stand_comparison_table" rows="10">{{ data.stand_comparison_table if data else '' }}</textarea>
+            <small class="text-muted d-block mb-2">Для добавления новой строки нажмите кнопку "Добавить строку".</small>
+            
+            <!-- Скрытое поле для отправки данных на сервер -->
+            <input type="hidden" id="stand_comparison_table" name="stand_comparison_table" value="{{ data.stand_comparison_table if data else '' }}">
+            
+            <!-- Визуальная таблица с input полями -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="stand_comparison_visual_table">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">Система <span class="text-danger">*</span></th>
+                            <th style="width: 25%;">Параметр <span class="text-danger">*</span></th>
+                            <th style="width: 25%;">Значение на UAT контуре <span class="text-danger">*</span></th>
+                            <th style="width: 20%;">Значение на продуктивной среде <span class="text-danger">*</span></th>
+                            <th style="width: 5%; text-align: center;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stand_comparison_tbody">
+                        <!-- Заполняется автоматически через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add_stand_comparison_row_btn">
+                <i class="bi bi-plus-circle"></i> Добавить строку
+            </button>
         </div>
     </div>
 
@@ -1683,6 +1706,178 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+<!-- JavaScript для таблицы сравнения стендов -->
+<script>
+// Управление таблицей сравнения стендов
+document.addEventListener('DOMContentLoaded', function() {
+    const standComparisonTableHidden = document.getElementById('stand_comparison_table');
+    const standComparisonTableTbody = document.getElementById('stand_comparison_tbody');
+    const addStandComparisonRowBtn = document.getElementById('add_stand_comparison_row_btn');
+    
+    if (!standComparisonTableHidden || !standComparisonTableTbody) {
+        console.error('Stand comparison table elements not found');
+        return;
+    }
+    
+    console.log('Stand comparison table script loaded, button:', addStandComparisonRowBtn);
+    
+    // Функция для создания новой строки в таблице
+    function createStandComparisonRow(rowData = { system: '', parameter: '', test_value: '', prod_value: '' }) {
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm stand-system" 
+                       name="stand_system[]" 
+                       value="${(rowData.system || '').replace(/"/g, '&quot;')}"
+                       placeholder="Например: Кластер из трёх нод"
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm stand-parameter" 
+                       name="stand_parameter[]" 
+                       value="${(rowData.parameter || '').replace(/"/g, '&quot;')}"
+                       placeholder="Например: Имена серверов"
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm stand-test-value" 
+                       name="stand_test_value[]" 
+                       value="${(rowData.test_value || '').replace(/"/g, '&quot;')}"
+                       placeholder="Например: site-dbapp-lt-01"
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm stand-prod-value" 
+                       name="stand_prod_value[]" 
+                       value="${(rowData.prod_value || '').replace(/"/g, '&quot;')}"
+                       placeholder="Например: Site-dbapp-p-05"
+                       required>
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+                <button type="button" 
+                        class="btn btn-sm btn-danger remove-stand-comparison-row" 
+                        title="Удалить строку">
+                    <i class="bi bi-trash"></i> Удалить
+                </button>
+            </td>
+        `;
+        
+        return row;
+    }
+    
+    // Функция для загрузки существующих данных
+    function loadExistingStandComparisonData() {
+        const standComparisonData = standComparisonTableHidden.value.trim();
+        
+        if (!standComparisonData) {
+            return; // Нет данных - таблица остается пустой
+        }
+        
+        const lines = standComparisonData.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+            return; // Только заголовок или пусто
+        }
+        
+        // Пропускаем заголовок (первая строка)
+        for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split('|').map(p => p.trim());
+            if (parts.length >= 4) {
+                const rowData = {
+                    system: parts[0] || '',
+                    parameter: parts[1] || '',
+                    test_value: parts[2] || '',
+                    prod_value: parts[3] || ''
+                };
+                const row = createStandComparisonRow(rowData);
+                standComparisonTableTbody.appendChild(row);
+            }
+        }
+        
+        updateStandComparisonHiddenField();
+    }
+    
+    // Функция для обновления скрытого поля из визуальной таблицы
+    function updateStandComparisonHiddenField() {
+        const rows = standComparisonTableTbody.querySelectorAll('tr');
+        if (rows.length === 0) {
+            standComparisonTableHidden.value = '';
+            return;
+        }
+        
+        const parts = [];
+        parts.push('Система|Параметр|Значение на UAT контуре|Значение на продуктивной среде'); // Заголовок
+        
+        rows.forEach(row => {
+            const systemInput = row.querySelector('.stand-system');
+            const parameterInput = row.querySelector('.stand-parameter');
+            const testValueInput = row.querySelector('.stand-test-value');
+            const prodValueInput = row.querySelector('.stand-prod-value');
+            
+            if (systemInput && parameterInput && testValueInput && prodValueInput) {
+                const system = systemInput.value.trim();
+                const parameter = parameterInput.value.trim();
+                const testValue = testValueInput.value.trim();
+                const prodValue = prodValueInput.value.trim();
+                if (system || parameter || testValue || prodValue) {
+                    parts.push(`${system}|${parameter}|${testValue}|${prodValue}`);
+                }
+            }
+        });
+        
+        standComparisonTableHidden.value = parts.join('\n');
+    }
+    
+    // Обработчик добавления новой строки
+    if (addStandComparisonRowBtn) {
+        console.log('Adding click handler to stand comparison row button');
+        addStandComparisonRowBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add stand comparison row button clicked');
+            const newRow = createStandComparisonRow();
+            standComparisonTableTbody.appendChild(newRow);
+            updateStandComparisonHiddenField();
+        });
+    } else {
+        console.error('Add stand comparison row button not found!');
+    }
+    
+    // Обработчик удаления строки
+    standComparisonTableTbody.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-stand-comparison-row')) {
+            const row = e.target.closest('tr');
+            if (row) {
+                row.remove();
+                updateStandComparisonHiddenField();
+            }
+        }
+    });
+    
+    // Обновляем скрытое поле при изменении полей
+    standComparisonTableTbody.addEventListener('input', function() {
+        updateStandComparisonHiddenField();
+    });
+    
+    standComparisonTableTbody.addEventListener('change', function() {
+        updateStandComparisonHiddenField();
+    });
+    
+    // Загружаем существующие данные при загрузке страницы
+    loadExistingStandComparisonData();
+    
+    // Обновляем скрытое поле перед отправкой формы
+    const form = document.querySelector('form[action*="/mnt/"]');
+    if (form) {
+        form.addEventListener('submit', function() {
+            updateStandComparisonHiddenField();
+        });
+    }
+});
+</script>
 {% if unpublished_changes and unpublished_changes|length > 0 %}
 <script id="unpublished-changes-data" type="application/json">{{ unpublished_changes|tojson|safe }}</script>
 <script src="/static/js/highlight-changes.js"></script>
@@ -1707,7 +1902,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // 'abbreviations_table', // Убрали, т.к. теперь визуальная таблица
         // 'terminology_table', // Убрали, т.к. теперь визуальная таблица
         // 'risks_table', // Убрали, т.к. теперь визуальная таблица
-        'stand_comparison_table',
+        // 'stand_comparison_table', // Убрали, т.к. теперь визуальная таблица
         'planned_tests_table',
         'database_preparation_table',
         'load_profiles_table',
