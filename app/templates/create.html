@@ -263,11 +263,11 @@
         <h4 class="mt-3 mb-3" id="section-5-1">5.1 Цели НТ</h4>
         <div class="mb-3">
             <label for="goals_business" class="form-label">Бизнес-цели (каждый пункт с новой строки)</label>
-            <textarea class="form-control" id="goals_business" name="goals_business" rows="5"></textarea>
+            <textarea class="form-control" id="goals_business" name="goals_business" rows="5">{{ data.goals_business if data else '' }}</textarea>
         </div>
         <div class="mb-3">
             <label for="goals_technical" class="form-label">Технические цели (каждый пункт с новой строки)</label>
-            <textarea class="form-control" id="goals_technical" name="goals_technical" rows="5"></textarea>
+            <textarea class="form-control" id="goals_technical" name="goals_technical" rows="5">{{ data.goals_technical if data else '' }}</textarea>
         </div>
 
         <h4 class="mt-3 mb-3" id="section-5-2">5.2 Задачи НТ</h4>
