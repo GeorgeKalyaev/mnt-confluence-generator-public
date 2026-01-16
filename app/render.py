@@ -438,8 +438,7 @@ def render_mnt_to_confluence_storage(
                     caption="Перечень типов тестов"
                 )
                 content_parts.append(table_html)
-            if data.get("planned_tests_note"):
-                content_parts.append(render_text_field(data["planned_tests_note"]))
+            # Примечание planned_tests_note не добавляется в Confluence - это только напоминание в форме
         
         # 9.2 Условия завершения НТ
         if data.get("completion_conditions"):

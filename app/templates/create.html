@@ -397,25 +397,53 @@
     <div class="form-section" id="section-9">
         <h3>9. Стратегия тестирования</h3>
         
-        <h4 class="mt-3 mb-3" id="section-9-1">9.1 Описание планируемых тестов</h4>
         <div class="mb-3">
             <label for="planned_tests_intro" class="form-label">Вводный текст</label>
-            <textarea class="form-control" id="planned_tests_intro" name="planned_tests_intro" rows="3"></textarea>
+            <textarea class="form-control" id="planned_tests_intro" name="planned_tests_intro" rows="3">{{ data.planned_tests_intro if data else '' }}</textarea>
         </div>
+        
+        <h4 class="mt-3 mb-3" id="section-9-1">9.1 Описание планируемых тестов</h4>
         <div class="mb-3">
             <label for="planned_tests_table" class="form-label">Таблица планируемых тестов</label>
-            <small class="text-muted d-block mb-2">Формат: №|Тест|Длительность теста|Описание теста (каждая строка - отдельная запись)</small>
-            <textarea class="form-control" id="planned_tests_table" name="planned_tests_table" rows="8"></textarea>
+            <small class="text-muted d-block mb-2">Для добавления новой строки нажмите кнопку "Добавить строку".</small>
+            
+            <!-- Скрытое поле для отправки данных на сервер -->
+            <input type="hidden" id="planned_tests_table" name="planned_tests_table" value="{{ data.planned_tests_table if data else '' }}">
+            
+            <!-- Визуальная таблица с input полями -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="planned_tests_visual_table">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">№ <span class="text-danger">*</span></th>
+                            <th style="width: 25%;">Тест <span class="text-danger">*</span></th>
+                            <th style="width: 20%;">Длительность теста <span class="text-danger">*</span></th>
+                            <th style="width: 45%;">Описание теста <span class="text-danger">*</span></th>
+                            <th style="width: 5%; text-align: center;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="planned_tests_tbody">
+                        <!-- Заполняется автоматически через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add_planned_test_row_btn">
+                <i class="bi bi-plus-circle"></i> Добавить строку
+            </button>
         </div>
         <div class="mb-3">
-            <label for="planned_tests_note" class="form-label">Примечание после таблицы</label>
-            <textarea class="form-control" id="planned_tests_note" name="planned_tests_note" rows="3"></textarea>
+            <div class="alert alert-info" role="alert" style="margin-bottom: 0;">
+                * приступая к тестированию необходимо выяснить, проработана ли Горизонтальная масштабируемость? Если да, то проводим тест. Если нет, то указываем это в МНТ и в рекомендациях отчёта.
+            </div>
         </div>
 
         <h4 class="mt-3 mb-3" id="section-9-2">9.2 Условия завершения НТ</h4>
         <div class="mb-3">
             <label for="completion_conditions" class="form-label">Список условий завершения НТ (каждое условие с новой строки)</label>
-            <textarea class="form-control" id="completion_conditions" name="completion_conditions" rows="6"></textarea>
+            <textarea class="form-control" id="completion_conditions" name="completion_conditions" rows="6">{% if data and data.get('completion_conditions') %}{{ data.completion_conditions }}{% else %}Критериями успешного завершения нагрузочного тестирования являются:
+•-
+•-
+•-{% endif %}</textarea>
         </div>
     </div>
 
@@ -428,8 +456,30 @@
         </div>
         <div class="mb-3">
             <label for="database_preparation_table" class="form-label">Таблица требований к объемам данных</label>
-            <small class="text-muted d-block mb-2">Формат: Схема.Таблица|Текущее кол-во строк в таблице|Прогноз роста в день (каждая строка - отдельная запись)</small>
-            <textarea class="form-control" id="database_preparation_table" name="database_preparation_table" rows="8"></textarea>
+            <small class="text-muted d-block mb-2">Для добавления новой строки нажмите кнопку "Добавить строку".</small>
+            
+            <!-- Скрытое поле для отправки данных на сервер -->
+            <input type="hidden" id="database_preparation_table" name="database_preparation_table" value="{{ data.database_preparation_table if data else '' }}">
+            
+            <!-- Визуальная таблица с input полями -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="database_preparation_visual_table">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%;">Схема.Таблица <span class="text-danger">*</span></th>
+                            <th style="width: 35%;">Текущее кол-во строк в таблице <span class="text-danger">*</span></th>
+                            <th style="width: 30%;">Прогноз роста в день <span class="text-danger">*</span></th>
+                            <th style="width: 5%; text-align: center;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="database_preparation_tbody">
+                        <!-- Заполняется автоматически через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add_database_preparation_row_btn">
+                <i class="bi bi-plus-circle"></i> Добавить строку
+            </button>
         </div>
     </div>
 
@@ -446,23 +496,65 @@
         <h4 class="mt-3 mb-3" id="section-11-2">11.2 Профили нагрузки</h4>
         <div class="mb-3">
             <label for="load_profiles_intro" class="form-label">Вводный текст</label>
-            <textarea class="form-control" id="load_profiles_intro" name="load_profiles_intro" rows="3"></textarea>
+            <textarea class="form-control" id="load_profiles_intro" name="load_profiles_intro" rows="3">{% if data and data.get('load_profiles_intro') %}{{ data.load_profiles_intro }}{% else %}В таблице ниже приведен Профиль НТ Р1 бизнес – операции, с использованием которых проводится тестирование и показатели интенсивности нагрузки по этим операциям принятые за 100%. Формирование перечня операций и показателей интенсивности нагрузки происходило на основе данных из сервиса Яндекс.Метрика о промышленном использовании тестируемой системы, с учётом правок, внесённых Заказчиком.{% endif %}</textarea>
         </div>
         <div class="mb-3">
             <label for="load_profiles_table" class="form-label">Таблица профилей нагрузки</label>
-            <small class="text-muted d-block mb-2">Формат: Название страниц|Интенсивность нагрузки, операций\минута (каждая строка - отдельная запись)</small>
-            <textarea class="form-control" id="load_profiles_table" name="load_profiles_table" rows="8"></textarea>
+            <small class="text-muted d-block mb-2">Для добавления новой строки нажмите кнопку "Добавить строку".</small>
+            
+            <!-- Скрытое поле для отправки данных на сервер -->
+            <input type="hidden" id="load_profiles_table" name="load_profiles_table" value="{{ data.load_profiles_table if data else '' }}">
+            
+            <!-- Визуальная таблица с input полями -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="load_profiles_visual_table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50%;">Название страниц <span class="text-danger">*</span></th>
+                            <th style="width: 45%;">Интенсивность нагрузки, операций\минута <span class="text-danger">*</span></th>
+                            <th style="width: 5%; text-align: center;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="load_profiles_tbody">
+                        <!-- Заполняется автоматически через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add_load_profiles_row_btn">
+                <i class="bi bi-plus-circle"></i> Добавить строку
+            </button>
         </div>
 
         <h4 class="mt-3 mb-3" id="section-11-3">11.3 Сценарии использования</h4>
         <div class="mb-3">
             <label for="use_scenarios_intro" class="form-label">Вводный текст</label>
-            <textarea class="form-control" id="use_scenarios_intro" name="use_scenarios_intro" rows="3"></textarea>
+            <textarea class="form-control" id="use_scenarios_intro" name="use_scenarios_intro" rows="3">{% if data and data.get('use_scenarios_intro') %}{{ data.use_scenarios_intro }}{% else %}Перечень эмулируемых пользовательских бизнес-сценариев представлен в нижеприведенной таблице.{% endif %}</textarea>
         </div>
         <div class="mb-3">
             <label for="use_scenarios_table" class="form-label">Таблица сценариев использования</label>
-            <small class="text-muted d-block mb-2">Формат: Шаги|Интенсивность нагрузки, операций\минута принятая за 100% (каждая строка - отдельная запись)</small>
-            <textarea class="form-control" id="use_scenarios_table" name="use_scenarios_table" rows="8"></textarea>
+            <small class="text-muted d-block mb-2">Для добавления новой строки нажмите кнопку "Добавить строку".</small>
+            
+            <!-- Скрытое поле для отправки данных на сервер -->
+            <input type="hidden" id="use_scenarios_table" name="use_scenarios_table" value="{{ data.use_scenarios_table if data else '' }}">
+            
+            <!-- Визуальная таблица с input полями -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="use_scenarios_visual_table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50%;">Шаги <span class="text-danger">*</span></th>
+                            <th style="width: 45%;">Интенсивность нагрузки, операций\минута принятая за 100% <span class="text-danger">*</span></th>
+                            <th style="width: 5%; text-align: center;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="use_scenarios_tbody">
+                        <!-- Заполняется автоматически через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add_use_scenarios_row_btn">
+                <i class="bi bi-plus-circle"></i> Добавить строку
+            </button>
         </div>
 
         <h4 class="mt-3 mb-3" id="section-11-4">11.4 Описание работы эмуляторов</h4>
@@ -484,12 +576,34 @@
         <h4 class="mt-3 mb-3" id="section-12-1">12.1 Описание средств мониторинга</h4>
         <div class="mb-3">
             <label for="monitoring_tools_intro" class="form-label">Вводный текст</label>
-            <textarea class="form-control" id="monitoring_tools_intro" name="monitoring_tools_intro" rows="2"></textarea>
+            <textarea class="form-control" id="monitoring_tools_intro" name="monitoring_tools_intro" rows="2">{% if data and data.get('monitoring_tools_intro') %}{{ data.monitoring_tools_intro }}{% else %}Для мониторинга в ходе НТ предполагается использовать инструменты, указанные в таблице Таблица 11.{% endif %}</textarea>
         </div>
         <div class="mb-3">
             <label for="monitoring_tools_table" class="form-label">Таблица средств мониторинга</label>
-            <small class="text-muted d-block mb-2">Формат: Наименование|Роль|Эндпоинт (URI) (каждая строка - отдельная запись)</small>
-            <textarea class="form-control" id="monitoring_tools_table" name="monitoring_tools_table" rows="8">{{ data.monitoring_tools_table if data else '' }}</textarea>
+            <small class="text-muted d-block mb-2">Для добавления новой строки нажмите кнопку "Добавить строку".</small>
+            
+            <!-- Скрытое поле для отправки данных на сервер -->
+            <input type="hidden" id="monitoring_tools_table" name="monitoring_tools_table" value="{{ data.monitoring_tools_table if data else '' }}">
+            
+            <!-- Визуальная таблица с input полями -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="monitoring_tools_visual_table">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%;">Наименование <span class="text-danger">*</span></th>
+                            <th style="width: 35%;">Роль <span class="text-danger">*</span></th>
+                            <th style="width: 30%;">Эндпоинт (URI)</th>
+                            <th style="width: 5%; text-align: center;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monitoring_tools_tbody">
+                        <!-- Заполняется автоматически через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add_monitoring_tools_row_btn">
+                <i class="bi bi-plus-circle"></i> Добавить строку
+            </button>
         </div>
         <div class="mb-3">
             <label for="monitoring_tools_note" class="form-label">Текст после таблицы средств мониторинга</label>
@@ -501,12 +615,36 @@
         <h5 class="mt-2 mb-2">12.2.1 Мониторинг системных ресурсов</h5>
         <div class="mb-3">
             <label for="system_resources_intro" class="form-label">Вводный текст</label>
-            <textarea class="form-control" id="system_resources_intro" name="system_resources_intro" rows="2"></textarea>
+            <textarea class="form-control" id="system_resources_intro" name="system_resources_intro" rows="2">{% if data and data.get('system_resources_intro') %}{{ data.system_resources_intro }}{% else %}Мониторинг системных ресурсов серверов приложений, серверов БД, серверов с эмуляторами и генерации нагрузки будет выполняться посредством метрик, указанных в таблице 12.{% endif %}</textarea>
         </div>
         <div class="mb-3">
             <label for="system_resources_table" class="form-label">Таблица метрик системных ресурсов</label>
-            <small class="text-muted d-block mb-2">Формат: №|Тип метрики|Способ снятия|Способ получения|Визуализация (каждая строка - отдельная запись)</small>
-            <textarea class="form-control" id="system_resources_table" name="system_resources_table" rows="8"></textarea>
+            <small class="text-muted d-block mb-2">Для добавления новой строки нажмите кнопку "Добавить строку".</small>
+            
+            <!-- Скрытое поле для отправки данных на сервер -->
+            <input type="hidden" id="system_resources_table" name="system_resources_table" value="{{ data.system_resources_table if data else '' }}">
+            
+            <!-- Визуальная таблица с input полями -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="system_resources_visual_table">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">№</th>
+                            <th style="width: 20%;">Тип метрики <span class="text-danger">*</span></th>
+                            <th style="width: 30%;">Способ снятия <span class="text-danger">*</span></th>
+                            <th style="width: 22%;">Способ получения <span class="text-danger">*</span></th>
+                            <th style="width: 18%;">Визуализация</th>
+                            <th style="width: 5%; text-align: center;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="system_resources_tbody">
+                        <!-- Заполняется автоматически через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add_system_resources_row_btn">
+                <i class="bi bi-plus-circle"></i> Добавить строку
+            </button>
         </div>
 
         <h5 class="mt-3 mb-2">12.2.2 Мониторинг бизнес-метрик</h5>
@@ -1417,6 +1555,197 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+<!-- JavaScript для таблицы планируемых тестов -->
+<script>
+// Управление таблицей планируемых тестов
+document.addEventListener('DOMContentLoaded', function() {
+    const plannedTestsTableHidden = document.getElementById('planned_tests_table');
+    const plannedTestsTableTbody = document.getElementById('planned_tests_tbody');
+    const addPlannedTestRowBtn = document.getElementById('add_planned_test_row_btn');
+    
+    if (!plannedTestsTableHidden || !plannedTestsTableTbody) {
+        console.error('Planned tests table elements not found');
+        return;
+    }
+    
+    console.log('Planned tests table script loaded, button:', addPlannedTestRowBtn);
+    
+    // Функция для создания новой строки в таблице
+    function createPlannedTestRow(rowData = { number: '', test: '', duration: '', description: '' }) {
+        const row = document.createElement('tr');
+        
+        // Автоматически определяем номер, если не указан
+        let rowNumber = rowData.number;
+        if (!rowNumber) {
+            const existingRows = plannedTestsTableTbody.querySelectorAll('tr');
+            rowNumber = (existingRows.length + 1).toString();
+        }
+        
+        row.innerHTML = `
+            <td style="text-align: center; vertical-align: middle;">
+                <span class="planned-test-number" style="font-weight: bold; font-size: 1.1rem; color: #212529;">${rowNumber}</span>
+                <input type="hidden" name="planned_test_number[]" value="${rowNumber}">
+            </td>
+            <td>
+                <textarea class="form-control form-control-sm planned-test-name" 
+                       name="planned_test_name[]" 
+                       rows="2"
+                       placeholder="Например: Поиск максимума"
+                       required>${(rowData.test || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+            </td>
+            <td>
+                <textarea class="form-control form-control-sm planned-test-duration" 
+                       name="planned_test_duration[]" 
+                       rows="2"
+                       placeholder="Например: 2 часа"
+                       required>${(rowData.duration || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+            </td>
+            <td>
+                <textarea class="form-control form-control-sm planned-test-description" 
+                       name="planned_test_description[]" 
+                       rows="3"
+                       placeholder="Описание теста"
+                       required>${(rowData.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+                <button type="button" 
+                        class="btn btn-sm btn-danger remove-planned-test-row" 
+                        title="Удалить строку">
+                    <i class="bi bi-trash"></i> Удалить
+                </button>
+            </td>
+        `;
+        
+        return row;
+    }
+    
+    // Функция для загрузки существующих данных
+    function loadExistingPlannedTestData() {
+        const plannedTestsData = plannedTestsTableHidden.value.trim();
+        
+        if (!plannedTestsData) {
+            return; // Нет данных - таблица остается пустой
+        }
+        
+        const lines = plannedTestsData.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+            return; // Только заголовок или пусто
+        }
+        
+        // Пропускаем заголовок (первая строка)
+        for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split('|').map(p => p.trim());
+            if (parts.length >= 4) {
+                const rowData = {
+                    number: parts[0] || '',
+                    test: parts[1] || '',
+                    duration: parts[2] || '',
+                    description: parts[3] || ''
+                };
+                const row = createPlannedTestRow(rowData);
+                plannedTestsTableTbody.appendChild(row);
+            }
+        }
+        
+        updatePlannedTestHiddenField();
+    }
+    
+    // Функция для обновления скрытого поля из визуальной таблицы
+    function updatePlannedTestHiddenField() {
+        const rows = plannedTestsTableTbody.querySelectorAll('tr');
+        if (rows.length === 0) {
+            plannedTestsTableHidden.value = '';
+            return;
+        }
+        
+        const parts = [];
+        parts.push('№|Тест|Длительность теста|Описание теста'); // Заголовок
+        
+        rows.forEach(row => {
+            const numberHidden = row.querySelector('input[name="planned_test_number[]"]');
+            const testInput = row.querySelector('.planned-test-name');
+            const durationInput = row.querySelector('.planned-test-duration');
+            const descriptionInput = row.querySelector('.planned-test-description');
+            
+            if (numberHidden && testInput && durationInput && descriptionInput) {
+                const number = numberHidden.value.trim();
+                const test = testInput.value.trim();
+                const duration = durationInput.value.trim();
+                const description = descriptionInput.value.trim();
+                if (number || test || duration || description) {
+                    parts.push(`${number}|${test}|${duration}|${description}`);
+                }
+            }
+        });
+        
+        plannedTestsTableHidden.value = parts.join('\n');
+    }
+    
+    // Функция для перенумерации всех строк
+    function renumberRows() {
+        const rows = plannedTestsTableTbody.querySelectorAll('tr');
+        rows.forEach((row, index) => {
+            const numberSpan = row.querySelector('.planned-test-number');
+            const numberHidden = row.querySelector('input[name="planned_test_number[]"]');
+            const newNumber = (index + 1).toString();
+            if (numberSpan) {
+                numberSpan.textContent = newNumber;
+            }
+            if (numberHidden) {
+                numberHidden.value = newNumber;
+            }
+        });
+    }
+    
+    // Обработчик добавления новой строки
+    if (addPlannedTestRowBtn) {
+        console.log('Adding click handler to planned test row button');
+        addPlannedTestRowBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add planned test row button clicked');
+            const newRow = createPlannedTestRow();
+            plannedTestsTableTbody.appendChild(newRow);
+            renumberRows(); // Перенумеровываем все строки
+            updatePlannedTestHiddenField();
+        });
+    } else {
+        console.error('Add planned test row button not found!');
+    }
+    
+    // Обработчик удаления строки
+    plannedTestsTableTbody.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-planned-test-row')) {
+            const row = e.target.closest('tr');
+            if (row) {
+                row.remove();
+                renumberRows(); // Перенумеровываем все строки после удаления
+                updatePlannedTestHiddenField();
+            }
+        }
+    });
+    
+    // Обновляем скрытое поле при изменении полей
+    plannedTestsTableTbody.addEventListener('input', function() {
+        updatePlannedTestHiddenField();
+    });
+    
+    plannedTestsTableTbody.addEventListener('change', function() {
+        updatePlannedTestHiddenField();
+    });
+    
+    // Загружаем существующие данные при загрузке страницы
+    loadExistingPlannedTestData();
+    
+    // Обновляем скрытое поле перед отправкой формы
+    const form = document.querySelector('form[action*="/mnt/"]');
+    if (form) {
+        form.addEventListener('submit', function() {
+            updatePlannedTestHiddenField();
+        });
+    }
+});
+</script>
+
 <!-- JavaScript для таблицы листа согласования -->
 <script>
 // Управление таблицей листа согласования
@@ -1635,6 +1964,875 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<!-- JavaScript для таблицы требований к объемам данных -->
+<script>
+// Управление таблицей требований к объемам данных
+document.addEventListener('DOMContentLoaded', function() {
+    const databasePreparationTableHidden = document.getElementById('database_preparation_table');
+    const databasePreparationTableTbody = document.getElementById('database_preparation_tbody');
+    const addDatabasePreparationRowBtn = document.getElementById('add_database_preparation_row_btn');
+    
+    if (!databasePreparationTableHidden || !databasePreparationTableTbody) {
+        console.error('Database preparation table elements not found');
+        return;
+    }
+    
+    console.log('Database preparation table script loaded, button:', addDatabasePreparationRowBtn);
+    
+    // Функция для создания новой строки в таблице
+    function createDatabasePreparationRow(rowData = { schema_table: '', current_rows: '', growth_per_day: '' }) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm database-prep-schema-table" 
+                       name="database_prep_schema_table[]" 
+                       value="${rowData.schema_table || ''}"
+                       placeholder="Например: public.users"
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm database-prep-current-rows" 
+                       name="database_prep_current_rows[]" 
+                       value="${rowData.current_rows || ''}"
+                       placeholder="Например: 1000000"
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm database-prep-growth-per-day" 
+                       name="database_prep_growth_per_day[]" 
+                       value="${rowData.growth_per_day || ''}"
+                       placeholder="Например: 1000"
+                       required>
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+                <button type="button" 
+                        class="btn btn-sm btn-danger remove-database-prep-row" 
+                        title="Удалить строку">
+                    <i class="bi bi-trash"></i> Удалить
+                </button>
+            </td>
+        `;
+        return row;
+    }
+    
+    // Функция для загрузки существующих данных
+    function loadExistingDatabasePreparationData() {
+        const databasePreparationData = databasePreparationTableHidden.value.trim();
+        
+        if (!databasePreparationData) {
+            return; // Нет данных - таблица остается пустой
+        }
+        
+        const lines = databasePreparationData.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+            return; // Только заголовок или пусто
+        }
+        
+        // Пропускаем заголовок (первая строка)
+        for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split('|').map(p => p.trim());
+            if (parts.length >= 3) {
+                const rowData = {
+                    schema_table: parts[0] || '',
+                    current_rows: parts[1] || '',
+                    growth_per_day: parts[2] || ''
+                };
+                const row = createDatabasePreparationRow(rowData);
+                databasePreparationTableTbody.appendChild(row);
+            }
+        }
+        
+        updateDatabasePreparationHiddenField();
+    }
+    
+    // Функция для обновления скрытого поля из визуальной таблицы
+    function updateDatabasePreparationHiddenField() {
+        const rows = databasePreparationTableTbody.querySelectorAll('tr');
+        if (rows.length === 0) {
+            databasePreparationTableHidden.value = '';
+            return;
+        }
+        
+        const parts = [];
+        parts.push('Схема.Таблица|Текущее кол-во строк в таблице|Прогноз роста в день'); // Заголовок
+        
+        rows.forEach(row => {
+            const schemaTableInput = row.querySelector('.database-prep-schema-table');
+            const currentRowsInput = row.querySelector('.database-prep-current-rows');
+            const growthPerDayInput = row.querySelector('.database-prep-growth-per-day');
+            
+            if (schemaTableInput && currentRowsInput && growthPerDayInput) {
+                const schemaTable = schemaTableInput.value.trim();
+                const currentRows = currentRowsInput.value.trim();
+                const growthPerDay = growthPerDayInput.value.trim();
+                if (schemaTable || currentRows || growthPerDay) {
+                    parts.push(`${schemaTable}|${currentRows}|${growthPerDay}`);
+                }
+            }
+        });
+        
+        databasePreparationTableHidden.value = parts.join('\n');
+    }
+    
+    // Обработчик добавления новой строки
+    if (addDatabasePreparationRowBtn) {
+        console.log('Adding click handler to database preparation row button');
+        addDatabasePreparationRowBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add database preparation row button clicked');
+            const newRow = createDatabasePreparationRow();
+            databasePreparationTableTbody.appendChild(newRow);
+            updateDatabasePreparationHiddenField();
+        });
+    } else {
+        console.error('Add database preparation row button not found!');
+    }
+    
+    // Обработчик удаления строки
+    databasePreparationTableTbody.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-database-prep-row')) {
+            const row = e.target.closest('tr');
+            if (row) {
+                row.remove();
+                updateDatabasePreparationHiddenField();
+            }
+        }
+    });
+    
+    // Обновляем скрытое поле при изменении полей
+    databasePreparationTableTbody.addEventListener('input', function() {
+        updateDatabasePreparationHiddenField();
+    });
+    
+    databasePreparationTableTbody.addEventListener('change', function() {
+        updateDatabasePreparationHiddenField();
+    });
+    
+    // Загружаем существующие данные при загрузке страницы
+    loadExistingDatabasePreparationData();
+    
+    // Обновляем скрытое поле перед отправкой формы
+    const form = document.querySelector('form[action*="/mnt/"]');
+    if (form) {
+        form.addEventListener('submit', function() {
+            updateDatabasePreparationHiddenField();
+        });
+    }
+});
+</script>
+<!-- JavaScript для таблицы профилей нагрузки -->
+<script>
+// Управление таблицей профилей нагрузки
+document.addEventListener('DOMContentLoaded', function() {
+    const loadProfilesTableHidden = document.getElementById('load_profiles_table');
+    const loadProfilesTableTbody = document.getElementById('load_profiles_tbody');
+    const addLoadProfilesRowBtn = document.getElementById('add_load_profiles_row_btn');
+    
+    if (!loadProfilesTableHidden || !loadProfilesTableTbody) {
+        console.error('Load profiles table elements not found');
+        return;
+    }
+    
+    console.log('Load profiles table script loaded, button:', addLoadProfilesRowBtn);
+    
+    // Функция для создания новой строки в таблице
+    function createLoadProfilesRow(rowData = { page_name: '', intensity: '' }) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm load-profile-page-name" 
+                       name="load_profile_page_name[]" 
+                       value="${rowData.page_name || ''}"
+                       placeholder="Название страницы"
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm load-profile-intensity" 
+                       name="load_profile_intensity[]" 
+                       value="${rowData.intensity || ''}"
+                       placeholder="Интенсивность, операций/минута"
+                       required>
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+                <button type="button" 
+                        class="btn btn-sm btn-danger remove-load-profile-row" 
+                        title="Удалить строку">
+                    <i class="bi bi-trash"></i> Удалить
+                </button>
+            </td>
+        `;
+        return row;
+    }
+    
+    // Функция для загрузки существующих данных
+    function loadExistingLoadProfilesData() {
+        const loadProfilesData = loadProfilesTableHidden.value.trim();
+        
+        if (!loadProfilesData) {
+            return; // Нет данных - таблица остается пустой
+        }
+        
+        const lines = loadProfilesData.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+            return; // Только заголовок или пусто
+        }
+        
+        // Пропускаем заголовок (первая строка)
+        for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split('|').map(p => p.trim());
+            if (parts.length >= 2) {
+                const rowData = {
+                    page_name: parts[0] || '',
+                    intensity: parts[1] || ''
+                };
+                const row = createLoadProfilesRow(rowData);
+                loadProfilesTableTbody.appendChild(row);
+            }
+        }
+        
+        updateLoadProfilesHiddenField();
+    }
+    
+    // Функция для обновления скрытого поля из визуальной таблицы
+    function updateLoadProfilesHiddenField() {
+        const rows = loadProfilesTableTbody.querySelectorAll('tr');
+        if (rows.length === 0) {
+            loadProfilesTableHidden.value = '';
+            return;
+        }
+        
+        const parts = [];
+        parts.push('Название страниц|Интенсивность нагрузки, операций\\минута'); // Заголовок
+        
+        rows.forEach(row => {
+            const pageNameInput = row.querySelector('.load-profile-page-name');
+            const intensityInput = row.querySelector('.load-profile-intensity');
+            
+            if (pageNameInput && intensityInput) {
+                const pageName = pageNameInput.value.trim();
+                const intensity = intensityInput.value.trim();
+                if (pageName || intensity) {
+                    parts.push(`${pageName}|${intensity}`);
+                }
+            }
+        });
+        
+        loadProfilesTableHidden.value = parts.join('\n');
+    }
+    
+    // Обработчик добавления новой строки
+    if (addLoadProfilesRowBtn) {
+        console.log('Adding click handler to load profiles row button');
+        addLoadProfilesRowBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add load profiles row button clicked');
+            const newRow = createLoadProfilesRow();
+            loadProfilesTableTbody.appendChild(newRow);
+            updateLoadProfilesHiddenField();
+        });
+    } else {
+        console.error('Add load profiles row button not found!');
+    }
+    
+    // Обработчик удаления строки
+    loadProfilesTableTbody.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-load-profile-row')) {
+            const row = e.target.closest('tr');
+            if (row) {
+                row.remove();
+                updateLoadProfilesHiddenField();
+            }
+        }
+    });
+    
+    // Обновляем скрытое поле при изменении полей
+    loadProfilesTableTbody.addEventListener('input', function() {
+        updateLoadProfilesHiddenField();
+    });
+    
+    loadProfilesTableTbody.addEventListener('change', function() {
+        updateLoadProfilesHiddenField();
+    });
+    
+    // Загружаем существующие данные при загрузке страницы
+    loadExistingLoadProfilesData();
+    
+    // Обновляем скрытое поле перед отправкой формы
+    const form = document.querySelector('form[action*="/mnt/"]');
+    if (form) {
+        form.addEventListener('submit', function() {
+            updateLoadProfilesHiddenField();
+        });
+    }
+});
+</script>
+<!-- JavaScript для таблицы сценариев использования -->
+<script>
+// Управление таблицей сценариев использования
+document.addEventListener('DOMContentLoaded', function() {
+    const useScenariosTableHidden = document.getElementById('use_scenarios_table');
+    const useScenariosTableTbody = document.getElementById('use_scenarios_tbody');
+    const addUseScenariosRowBtn = document.getElementById('add_use_scenarios_row_btn');
+    
+    if (!useScenariosTableHidden || !useScenariosTableTbody) {
+        console.error('Use scenarios table elements not found');
+        return;
+    }
+    
+    console.log('Use scenarios table script loaded, button:', addUseScenariosRowBtn);
+    
+    // Функция для создания новой строки в таблице
+    function createUseScenariosRow(rowData = { steps: '', intensity: '' }) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm use-scenario-steps" 
+                       name="use_scenario_steps[]" 
+                       value="${rowData.steps || ''}"
+                       placeholder="Шаги сценария"
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm use-scenario-intensity" 
+                       name="use_scenario_intensity[]" 
+                       value="${rowData.intensity || ''}"
+                       placeholder="Интенсивность, операций/минута"
+                       required>
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+                <button type="button" 
+                        class="btn btn-sm btn-danger remove-use-scenario-row" 
+                        title="Удалить строку">
+                    <i class="bi bi-trash"></i> Удалить
+                </button>
+            </td>
+        `;
+        return row;
+    }
+    
+    // Функция для загрузки существующих данных
+    function loadExistingUseScenariosData() {
+        const useScenariosData = useScenariosTableHidden.value.trim();
+        
+        if (!useScenariosData) {
+            return; // Нет данных - таблица остается пустой
+        }
+        
+        const lines = useScenariosData.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+            return; // Только заголовок или пусто
+        }
+        
+        // Пропускаем заголовок (первая строка)
+        for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split('|').map(p => p.trim());
+            if (parts.length >= 2) {
+                const rowData = {
+                    steps: parts[0] || '',
+                    intensity: parts[1] || ''
+                };
+                const row = createUseScenariosRow(rowData);
+                useScenariosTableTbody.appendChild(row);
+            }
+        }
+        
+        updateUseScenariosHiddenField();
+    }
+    
+    // Функция для обновления скрытого поля из визуальной таблицы
+    function updateUseScenariosHiddenField() {
+        const rows = useScenariosTableTbody.querySelectorAll('tr');
+        if (rows.length === 0) {
+            useScenariosTableHidden.value = '';
+            return;
+        }
+        
+        const parts = [];
+        parts.push('Шаги|Интенсивность нагрузки, операций\\минута принятая за 100%'); // Заголовок
+        
+        rows.forEach(row => {
+            const stepsInput = row.querySelector('.use-scenario-steps');
+            const intensityInput = row.querySelector('.use-scenario-intensity');
+            
+            if (stepsInput && intensityInput) {
+                const steps = stepsInput.value.trim();
+                const intensity = intensityInput.value.trim();
+                if (steps || intensity) {
+                    parts.push(`${steps}|${intensity}`);
+                }
+            }
+        });
+        
+        useScenariosTableHidden.value = parts.join('\n');
+    }
+    
+    // Обработчик добавления новой строки
+    if (addUseScenariosRowBtn) {
+        console.log('Adding click handler to use scenarios row button');
+        addUseScenariosRowBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add use scenarios row button clicked');
+            const newRow = createUseScenariosRow();
+            useScenariosTableTbody.appendChild(newRow);
+            updateUseScenariosHiddenField();
+        });
+    } else {
+        console.error('Add use scenarios row button not found!');
+    }
+    
+    // Обработчик удаления строки
+    useScenariosTableTbody.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-use-scenario-row')) {
+            const row = e.target.closest('tr');
+            if (row) {
+                row.remove();
+                updateUseScenariosHiddenField();
+            }
+        }
+    });
+    
+    // Обновляем скрытое поле при изменении полей
+    useScenariosTableTbody.addEventListener('input', function() {
+        updateUseScenariosHiddenField();
+    });
+    
+    useScenariosTableTbody.addEventListener('change', function() {
+        updateUseScenariosHiddenField();
+    });
+    
+    // Загружаем существующие данные при загрузке страницы
+    loadExistingUseScenariosData();
+    
+    // Обновляем скрытое поле перед отправкой формы
+    const form = document.querySelector('form[action*="/mnt/"]');
+    if (form) {
+        form.addEventListener('submit', function() {
+            updateUseScenariosHiddenField();
+        });
+    }
+});
+</script>
+<!-- JavaScript для таблицы средств мониторинга -->
+<script>
+// Управление таблицей средств мониторинга
+document.addEventListener('DOMContentLoaded', function() {
+    const monitoringToolsTableHidden = document.getElementById('monitoring_tools_table');
+    const monitoringToolsTableTbody = document.getElementById('monitoring_tools_tbody');
+    const addMonitoringToolsRowBtn = document.getElementById('add_monitoring_tools_row_btn');
+    
+    if (!monitoringToolsTableHidden || !monitoringToolsTableTbody) {
+        console.error('Monitoring tools table elements not found');
+        return;
+    }
+    
+    console.log('Monitoring tools table script loaded, button:', addMonitoringToolsRowBtn);
+    
+    // Функция для создания новой строки в таблице
+    function createMonitoringToolsRow(rowData = { name: '', role: '', endpoint: '' }) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm monitoring-tool-name" 
+                       name="monitoring_tool_name[]" 
+                       value="${rowData.name || ''}"
+                       placeholder="Например: Grafana"
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm monitoring-tool-role" 
+                       name="monitoring_tool_role[]" 
+                       value="${rowData.role || ''}"
+                       placeholder="Роль инструмента"
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm monitoring-tool-endpoint" 
+                       name="monitoring_tool_endpoint[]" 
+                       value="${rowData.endpoint || ''}"
+                       placeholder="Эндпоинт (URI)">
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+                <button type="button" 
+                        class="btn btn-sm btn-danger remove-monitoring-tool-row" 
+                        title="Удалить строку">
+                    <i class="bi bi-trash"></i> Удалить
+                </button>
+            </td>
+        `;
+        return row;
+    }
+    
+    // Функция для загрузки существующих данных
+    function loadExistingMonitoringToolsData() {
+        const monitoringToolsData = monitoringToolsTableHidden.value.trim();
+        
+        if (!monitoringToolsData) {
+            return; // Нет данных - таблица остается пустой
+        }
+        
+        const lines = monitoringToolsData.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+            return; // Только заголовок или пусто
+        }
+        
+        // Пропускаем заголовок (первая строка)
+        for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split('|').map(p => p.trim());
+            if (parts.length >= 2) {
+                const rowData = {
+                    name: parts[0] || '',
+                    role: parts[1] || '',
+                    endpoint: parts[2] || ''
+                };
+                const row = createMonitoringToolsRow(rowData);
+                monitoringToolsTableTbody.appendChild(row);
+            }
+        }
+        
+        updateMonitoringToolsHiddenField();
+    }
+    
+    // Функция для обновления скрытого поля из визуальной таблицы
+    function updateMonitoringToolsHiddenField() {
+        const rows = monitoringToolsTableTbody.querySelectorAll('tr');
+        if (rows.length === 0) {
+            monitoringToolsTableHidden.value = '';
+            return;
+        }
+        
+        const parts = [];
+        parts.push('Наименование|Роль|Эндпоинт (URI)'); // Заголовок
+        
+        rows.forEach(row => {
+            const nameInput = row.querySelector('.monitoring-tool-name');
+            const roleInput = row.querySelector('.monitoring-tool-role');
+            const endpointInput = row.querySelector('.monitoring-tool-endpoint');
+            
+            if (nameInput && roleInput) {
+                const name = nameInput.value.trim();
+                const role = roleInput.value.trim();
+                const endpoint = endpointInput ? endpointInput.value.trim() : '';
+                if (name || role || endpoint) {
+                    parts.push(`${name}|${role}|${endpoint}`);
+                }
+            }
+        });
+        
+        monitoringToolsTableHidden.value = parts.join('\n');
+    }
+    
+    // Обработчик добавления новой строки
+    if (addMonitoringToolsRowBtn) {
+        console.log('Adding click handler to monitoring tools row button');
+        addMonitoringToolsRowBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add monitoring tools row button clicked');
+            const newRow = createMonitoringToolsRow();
+            monitoringToolsTableTbody.appendChild(newRow);
+            updateMonitoringToolsHiddenField();
+        });
+    } else {
+        console.error('Add monitoring tools row button not found!');
+    }
+    
+    // Обработчик удаления строки
+    monitoringToolsTableTbody.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-monitoring-tool-row')) {
+            const row = e.target.closest('tr');
+            if (row) {
+                row.remove();
+                updateMonitoringToolsHiddenField();
+            }
+        }
+    });
+    
+    // Обновляем скрытое поле при изменении полей
+    monitoringToolsTableTbody.addEventListener('input', function() {
+        updateMonitoringToolsHiddenField();
+    });
+    
+    monitoringToolsTableTbody.addEventListener('change', function() {
+        updateMonitoringToolsHiddenField();
+    });
+    
+    // Загружаем существующие данные при загрузке страницы
+    loadExistingMonitoringToolsData();
+    
+    // Обновляем скрытое поле перед отправкой формы
+    const form = document.querySelector('form[action*="/mnt/"]');
+    if (form) {
+        form.addEventListener('submit', function() {
+            updateMonitoringToolsHiddenField();
+        });
+    }
+});
+</script>
+<!-- JavaScript для таблицы метрик системных ресурсов -->
+<script>
+// Управление таблицей метрик системных ресурсов
+document.addEventListener('DOMContentLoaded', function() {
+    const systemResourcesTableHidden = document.getElementById('system_resources_table');
+    const systemResourcesTableTbody = document.getElementById('system_resources_tbody');
+    const addSystemResourcesRowBtn = document.getElementById('add_system_resources_row_btn');
+    
+    if (!systemResourcesTableHidden || !systemResourcesTableTbody) {
+        console.error('System resources table elements not found');
+        return;
+    }
+    
+    console.log('System resources table script loaded, button:', addSystemResourcesRowBtn);
+    
+    // Функция для создания новой строки в таблице
+    function createSystemResourcesRow(rowData = { number: '', metric_type: '', collection_method: '', acquisition_method: '', visualization: '' }) {
+        const row = document.createElement('tr');
+        
+        // Автоматически определяем номер, если не указан
+        let rowNumber = rowData.number;
+        if (!rowNumber) {
+            const existingRows = systemResourcesTableTbody.querySelectorAll('tr');
+            rowNumber = (existingRows.length + 1).toString();
+        }
+        
+        row.innerHTML = `
+            <td style="text-align: center; vertical-align: middle;">
+                <span class="system-resource-number-display" style="font-weight: bold; display: inline-block; min-width: 20px;">${rowNumber}</span>
+                <input type="hidden" class="system-resource-number" name="system_resource_number[]" value="${rowNumber}">
+            </td>
+            <td>
+                <textarea class="form-control form-control-sm system-resource-metric-type" 
+                       name="system_resource_metric_type[]" 
+                       rows="2"
+                       placeholder="Тип метрики"
+                       required>${rowData.metric_type || ''}</textarea>
+            </td>
+            <td>
+                <textarea class="form-control form-control-sm system-resource-collection-method" 
+                       name="system_resource_collection_method[]" 
+                       rows="2"
+                       placeholder="Способ снятия"
+                       required>${rowData.collection_method || ''}</textarea>
+            </td>
+            <td>
+                <textarea class="form-control form-control-sm system-resource-acquisition-method" 
+                       name="system_resource_acquisition_method[]" 
+                       rows="2"
+                       placeholder="Способ получения"
+                       required>${rowData.acquisition_method || ''}</textarea>
+            </td>
+            <td>
+                <textarea class="form-control form-control-sm system-resource-visualization" 
+                       name="system_resource_visualization[]" 
+                       rows="2"
+                       placeholder="Визуализация">${rowData.visualization || ''}</textarea>
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+                <button type="button" 
+                        class="btn btn-sm btn-danger remove-system-resource-row" 
+                        title="Удалить строку">
+                    <i class="bi bi-trash"></i> Удалить
+                </button>
+            </td>
+        `;
+        return row;
+    }
+    
+    // Функция для перенумерации строк
+    function renumberSystemResourcesRows() {
+        const rows = systemResourcesTableTbody.querySelectorAll('tr');
+        rows.forEach((row, index) => {
+            const numberDisplay = row.querySelector('.system-resource-number-display');
+            const numberInput = row.querySelector('.system-resource-number');
+            const number = (index + 1).toString();
+            if (numberDisplay) numberDisplay.textContent = number;
+            if (numberInput) numberInput.value = number;
+        });
+    }
+    
+    // Функция для загрузки существующих данных
+    function loadExistingSystemResourcesData() {
+        const systemResourcesData = systemResourcesTableHidden.value.trim();
+        
+        if (!systemResourcesData) {
+            return; // Нет данных - таблица остается пустой
+        }
+        
+        const allLines = systemResourcesData.split('\n');
+        if (allLines.length < 2) {
+            return; // Только заголовок или пусто
+        }
+        
+        // Парсим строки таблицы
+        // Строка таблицы начинается с номера (число|), что помогает отличить её от многострочных полей
+        const rows = [];
+        let currentRowParts = null;
+        let currentCollectionMethod = '';
+        
+        // Пропускаем заголовок (первая строка)
+        for (let i = 1; i < allLines.length; i++) {
+            const line = allLines[i].trim();
+            if (!line) continue;
+            
+            // Проверяем, начинается ли строка с числа и | (новая строка таблицы)
+            const match = line.match(/^(\d+)\|(.*)$/);
+            if (match) {
+                // Сохраняем предыдущую строку, если есть
+                if (currentRowParts) {
+                    currentRowParts[2] = currentCollectionMethod.trim();
+                    if (currentRowParts.length >= 4) {
+                        rows.push({
+                            number: currentRowParts[0] || '',
+                            metric_type: currentRowParts[1] || '',
+                            collection_method: currentRowParts[2] || '',
+                            acquisition_method: currentRowParts[3] || '',
+                            visualization: currentRowParts[4] || ''
+                        });
+                    }
+                }
+                // Начинаем новую строку
+                const parts = line.split('|').map(p => p.trim());
+                if (parts.length >= 4) {
+                    currentRowParts = parts;
+                    currentCollectionMethod = parts[2] || '';
+                }
+            } else if (currentRowParts) {
+                // Это продолжение многострочного поля "Способ снятия"
+                currentCollectionMethod += '\n' + line;
+            }
+        }
+        
+        // Добавляем последнюю строку
+        if (currentRowParts) {
+            currentRowParts[2] = currentCollectionMethod.trim();
+            if (currentRowParts.length >= 4) {
+                rows.push({
+                    number: currentRowParts[0] || '',
+                    metric_type: currentRowParts[1] || '',
+                    collection_method: currentRowParts[2] || '',
+                    acquisition_method: currentRowParts[3] || '',
+                    visualization: currentRowParts[4] || ''
+                });
+            }
+        }
+        
+        // Если парсинг не сработал, пробуем простой вариант
+        if (rows.length === 0) {
+            const lines = systemResourcesData.split('\n').filter(line => line.trim());
+            for (let i = 1; i < lines.length; i++) {
+                const parts = lines[i].split('|').map(p => p.trim());
+                if (parts.length >= 4) {
+                    rows.push({
+                        number: parts[0] || '',
+                        metric_type: parts[1] || '',
+                        collection_method: parts[2] || '',
+                        acquisition_method: parts[3] || '',
+                        visualization: parts[4] || ''
+                    });
+                }
+            }
+        }
+        
+        // Создаем строки таблицы
+        rows.forEach(rowData => {
+            const row = createSystemResourcesRow(rowData);
+            systemResourcesTableTbody.appendChild(row);
+        });
+        
+        renumberSystemResourcesRows();
+        updateSystemResourcesHiddenField();
+    }
+    
+    // Функция для обновления скрытого поля из визуальной таблицы
+    function updateSystemResourcesHiddenField() {
+        const rows = systemResourcesTableTbody.querySelectorAll('tr');
+        if (rows.length === 0) {
+            systemResourcesTableHidden.value = '';
+            return;
+        }
+        
+        const parts = [];
+        parts.push('№|Тип метрики|Способ снятия|Способ получения|Визуализация'); // Заголовок
+        
+        rows.forEach(row => {
+            const numberInput = row.querySelector('.system-resource-number');
+            const metricTypeInput = row.querySelector('.system-resource-metric-type');
+            const collectionMethodInput = row.querySelector('.system-resource-collection-method');
+            const acquisitionMethodInput = row.querySelector('.system-resource-acquisition-method');
+            const visualizationInput = row.querySelector('.system-resource-visualization');
+            
+            if (numberInput && metricTypeInput && collectionMethodInput && acquisitionMethodInput) {
+                const number = numberInput.value.trim();
+                const metricType = metricTypeInput.value.trim();
+                const collectionMethod = collectionMethodInput.value.trim();
+                const acquisitionMethod = acquisitionMethodInput.value.trim();
+                const visualization = visualizationInput ? visualizationInput.value.trim() : '';
+                if (metricType || collectionMethod || acquisitionMethod || visualization) {
+                    parts.push(`${number}|${metricType}|${collectionMethod}|${acquisitionMethod}|${visualization}`);
+                }
+            }
+        });
+        
+        systemResourcesTableHidden.value = parts.join('\n');
+    }
+    
+    // Обработчик добавления новой строки
+    if (addSystemResourcesRowBtn) {
+        console.log('Adding click handler to system resources row button');
+        addSystemResourcesRowBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add system resources row button clicked');
+            const newRow = createSystemResourcesRow();
+            systemResourcesTableTbody.appendChild(newRow);
+            renumberSystemResourcesRows();
+            updateSystemResourcesHiddenField();
+        });
+    } else {
+        console.error('Add system resources row button not found!');
+    }
+    
+    // Обработчик удаления строки
+    systemResourcesTableTbody.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-system-resource-row')) {
+            const row = e.target.closest('tr');
+            if (row) {
+                row.remove();
+                renumberSystemResourcesRows();
+                updateSystemResourcesHiddenField();
+            }
+        }
+    });
+    
+    // Обновляем скрытое поле при изменении полей
+    systemResourcesTableTbody.addEventListener('input', function() {
+        updateSystemResourcesHiddenField();
+    });
+    
+    systemResourcesTableTbody.addEventListener('change', function() {
+        updateSystemResourcesHiddenField();
+    });
+    
+    // Загружаем существующие данные при загрузке страницы
+    loadExistingSystemResourcesData();
+    
+    // Обновляем скрытое поле перед отправкой формы
+    const form = document.querySelector('form[action*="/mnt/"]');
+    if (form) {
+        form.addEventListener('submit', function() {
+            updateSystemResourcesHiddenField();
+        });
+    }
+});
+</script>
 <script>
 // Инициализация редакторов таблиц и других функций
 document.addEventListener('DOMContentLoaded', function() {
@@ -1647,12 +2845,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // 'terminology_table', // Убрали, т.к. теперь визуальная таблица
         // 'risks_table', // Убрали, т.к. теперь визуальная таблица
         // 'stand_comparison_table', // Убрали, т.к. теперь визуальная таблица
-        'planned_tests_table',
-        'database_preparation_table',
-        'load_profiles_table',
-        'use_scenarios_table',
-        'monitoring_tools_table',
-        'system_resources_table',
+        // 'planned_tests_table', // Убрали, т.к. теперь визуальная таблица
+        // 'database_preparation_table', // Убрали, т.к. теперь визуальная таблица
+        // 'load_profiles_table', // Убрали, т.к. теперь визуальная таблица
+        // 'use_scenarios_table', // Убрали, т.к. теперь визуальная таблица
+        // 'monitoring_tools_table', // Убрали, т.к. теперь визуальная таблица
+        // 'system_resources_table', // Убрали, т.к. теперь визуальная таблица
         'business_metrics_table',
         'deliverables_table',
         'contacts_table'
