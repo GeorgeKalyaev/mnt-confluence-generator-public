@@ -650,12 +650,33 @@
         <h5 class="mt-3 mb-2">12.2.2 Мониторинг бизнес-метрик</h5>
         <div class="mb-3">
             <label for="business_metrics_intro" class="form-label">Вводный текст</label>
-            <textarea class="form-control" id="business_metrics_intro" name="business_metrics_intro" rows="2"></textarea>
+            <textarea class="form-control" id="business_metrics_intro" name="business_metrics_intro" rows="2">{% if data and data.get('business_metrics_intro') %}{{ data.business_metrics_intro }}{% else %}В процессе НТ необходимо отслеживать бизнес-характеристики системы, указанные в таблице Таблица 13.{% endif %}</textarea>
         </div>
         <div class="mb-3">
             <label for="business_metrics_table" class="form-label">Таблица бизнес-метрик</label>
-            <small class="text-muted d-block mb-2">Формат: Бизнес-метрика|Единица измерения (каждая строка - отдельная запись)</small>
-            <textarea class="form-control" id="business_metrics_table" name="business_metrics_table" rows="10">{{ data.business_metrics_table if data else '' }}</textarea>
+            <small class="text-muted d-block mb-2">Для добавления новой строки нажмите кнопку "Добавить строку".</small>
+            
+            <!-- Скрытое поле для отправки данных на сервер -->
+            <input type="hidden" id="business_metrics_table" name="business_metrics_table" value="{{ data.business_metrics_table if data else '' }}">
+            
+            <!-- Визуальная таблица с input полями -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="business_metrics_visual_table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60%;">Бизнес-метрика <span class="text-danger">*</span></th>
+                            <th style="width: 35%;">Единица измерения</th>
+                            <th style="width: 5%; text-align: center;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="business_metrics_tbody">
+                        <!-- Заполняется автоматически через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add_business_metrics_row_btn">
+                <i class="bi bi-plus-circle"></i> Добавить строку
+            </button>
         </div>
     </div>
 
@@ -663,20 +684,25 @@
     <div class="form-section" id="section-13">
         <h3>13. Требования к Заказчику</h3>
         <div class="mb-3">
-            <label for="customer_requirements_intro" class="form-label">Вводный текст</label>
-            <textarea class="form-control" id="customer_requirements_intro" name="customer_requirements_intro" rows="3">{{ data.customer_requirements_intro if data else '' }}</textarea>
-        </div>
-        <div class="mb-3">
-            <label for="customer_requirements_list" class="form-label">Список требований (каждое требование с новой строки, можно нумеровать)</label>
-            <textarea class="form-control" id="customer_requirements_list" name="customer_requirements_list" rows="15">{{ data.customer_requirements_list if data else '' }}</textarea>
-        </div>
-        <div class="mb-3">
-            <label for="customer_requirements_note_intro" class="form-label">Вводный текст для примечания</label>
-            <textarea class="form-control" id="customer_requirements_note_intro" name="customer_requirements_note_intro" rows="2">{{ data.customer_requirements_note_intro if data else '' }}</textarea>
-        </div>
-        <div class="mb-3">
-            <label for="customer_requirements_note_list" class="form-label">Список условий при изменении сроков (каждое условие с новой строки, можно нумеровать)</label>
-            <textarea class="form-control" id="customer_requirements_note_list" name="customer_requirements_note_list" rows="5">{{ data.customer_requirements_note_list if data else '' }}</textarea>
+            <label for="customer_requirements_list" class="form-label">Список требований к Заказчику</label>
+            <textarea class="form-control" id="customer_requirements_list" name="customer_requirements_list" rows="20">{% if data and data.get('customer_requirements_list') %}{{ data.customer_requirements_list }}{% else %}1. Выполнить подготовку (сборку, настройку, установку системного ПО, развертывание тестируемых подсистем) тестового стенда для нагрузочного тестирования (отвечает Заказчик). Полное развертывание тестового стенда для нагрузочного тестирования должно быть произведено в сроки, указанные в календарном плане, согласованным с Заказчиком;
+2. Предоставить выборки данных (статистики) по операциям Системы за пиковые часы работы в промышленной эксплуатации;
+3. Спрогнозировать промышленную эксплуатацию при невозможности собрать статистику (например, когда система еще не введена в эксплуатацию);
+4. Необходимо участие администраторов АС в мониторинге утилизации системных ресурсов и предоставление данных мониторинга для анализа результатов нагрузочного тестирования;
+5. Необходимо участие специалистов Заказчика для консультации по вопросам интеграции с внешними системами и выполняемых в системе операций если таковы имеются;
+6. Предоставить доступ к серверам генерации нагрузки, способных обеспечивать необходимую интенсивность выполнения операций;
+7. Предоставить доступ к тестовому стенду с рабочего места Исполнителя;
+8. Выполнить миграцию данных с промышленной БД в БД стенда нагрузочного тестирования;
+9. Создать резервные копии тестовых БД перед началом проведения нагрузочных испытаний;
+10. При необходимости, по запросу выполнить восстановление тестовой БД из резервной копии;
+11. При необходимости, по запросу выполнить перезагрузку серверов, оперативно восстановить стенд после сбоев;
+12. Обеспечить неизменность версии системы на протяжении тестирования в целях валидности результатов;
+13. Исключить несогласованные изменения конфигурации тестового стенда на протяжении периода выполнения проекта по нагрузочному тестированию системы;
+14. Обеспечить скорость подключения между узлами системы, генераторами нагрузки, эмуляторами и т.д., достаточной для проведения НТ;
+15. Устранить блокеры НТ в случае их выявления. По необходимости доработать ППО силами Заказчика;
+Если сроки доработки ППО приводят к тому, что проект не может быть завершен вовремя, то:
+1. В случае, если объём работ не меняется, стороны согласовывают изменение даты завершения работ без изменения общей трудоемкости;
+2. В случае, если объём работ должен быть изменен, стороны согласовывают перечень и объем работ по тестированию после доработки ППО, вынесенных за рамки данного проекта в отдельный проект.{% endif %}</textarea>
         </div>
     </div>
 
@@ -2833,6 +2859,151 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+<!-- JavaScript для таблицы бизнес-метрик -->
+<script>
+// Управление таблицей бизнес-метрик
+document.addEventListener('DOMContentLoaded', function() {
+    const businessMetricsTableHidden = document.getElementById('business_metrics_table');
+    const businessMetricsTableTbody = document.getElementById('business_metrics_tbody');
+    const addBusinessMetricsRowBtn = document.getElementById('add_business_metrics_row_btn');
+    
+    if (!businessMetricsTableHidden || !businessMetricsTableTbody) {
+        console.error('Business metrics table elements not found');
+        return;
+    }
+    
+    console.log('Business metrics table script loaded, button:', addBusinessMetricsRowBtn);
+    
+    // Функция для создания новой строки в таблице
+    function createBusinessMetricsRow(rowData = { metric: '', unit: '' }) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <textarea class="form-control form-control-sm business-metric-metric" 
+                       name="business_metric_metric[]" 
+                       rows="2"
+                       placeholder="Бизнес-метрика"
+                       required>${rowData.metric || ''}</textarea>
+            </td>
+            <td>
+                <textarea class="form-control form-control-sm business-metric-unit" 
+                       name="business_metric_unit[]" 
+                       rows="2"
+                       placeholder="Единица измерения">${rowData.unit || ''}</textarea>
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+                <button type="button" 
+                        class="btn btn-sm btn-danger remove-business-metric-row" 
+                        title="Удалить строку">
+                    <i class="bi bi-trash"></i> Удалить
+                </button>
+            </td>
+        `;
+        return row;
+    }
+    
+    // Функция для загрузки существующих данных
+    function loadExistingBusinessMetricsData() {
+        const businessMetricsData = businessMetricsTableHidden.value.trim();
+        
+        if (!businessMetricsData) {
+            return; // Нет данных - таблица остается пустой
+        }
+        
+        const lines = businessMetricsData.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+            return; // Только заголовок или пусто
+        }
+        
+        // Пропускаем заголовок (первая строка)
+        for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split('|').map(p => p.trim());
+            if (parts.length >= 2) {
+                const rowData = {
+                    metric: parts[0] || '',
+                    unit: parts[1] || ''
+                };
+                const row = createBusinessMetricsRow(rowData);
+                businessMetricsTableTbody.appendChild(row);
+            }
+        }
+        
+        updateBusinessMetricsHiddenField();
+    }
+    
+    // Функция для обновления скрытого поля из визуальной таблицы
+    function updateBusinessMetricsHiddenField() {
+        const rows = businessMetricsTableTbody.querySelectorAll('tr');
+        if (rows.length === 0) {
+            businessMetricsTableHidden.value = '';
+            return;
+        }
+        
+        const parts = [];
+        parts.push('Бизнес-метрика|Единица измерения'); // Заголовок
+        
+        rows.forEach(row => {
+            const metricInput = row.querySelector('.business-metric-metric');
+            const unitInput = row.querySelector('.business-metric-unit');
+            
+            if (metricInput && unitInput) {
+                const metric = metricInput.value.trim();
+                const unit = unitInput.value.trim();
+                if (metric || unit) {
+                    parts.push(`${metric}|${unit}`);
+                }
+            }
+        });
+        
+        businessMetricsTableHidden.value = parts.join('\n');
+    }
+    
+    // Обработчик добавления новой строки
+    if (addBusinessMetricsRowBtn) {
+        console.log('Adding click handler to business metrics row button');
+        addBusinessMetricsRowBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add business metrics row button clicked');
+            const newRow = createBusinessMetricsRow();
+            businessMetricsTableTbody.appendChild(newRow);
+            updateBusinessMetricsHiddenField();
+        });
+    } else {
+        console.error('Add business metrics row button not found!');
+    }
+    
+    // Обработчик удаления строки
+    businessMetricsTableTbody.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-business-metric-row')) {
+            const row = e.target.closest('tr');
+            if (row) {
+                row.remove();
+                updateBusinessMetricsHiddenField();
+            }
+        }
+    });
+    
+    // Обновляем скрытое поле при изменении полей
+    businessMetricsTableTbody.addEventListener('input', function() {
+        updateBusinessMetricsHiddenField();
+    });
+    
+    businessMetricsTableTbody.addEventListener('change', function() {
+        updateBusinessMetricsHiddenField();
+    });
+    
+    // Загружаем существующие данные при загрузке страницы
+    loadExistingBusinessMetricsData();
+    
+    // Обновляем скрытое поле перед отправкой формы
+    const form = document.querySelector('form[action*="/mnt/"]');
+    if (form) {
+        form.addEventListener('submit', function() {
+            updateBusinessMetricsHiddenField();
+        });
+    }
+});
+</script>
 <script>
 // Инициализация редакторов таблиц и других функций
 document.addEventListener('DOMContentLoaded', function() {
@@ -2851,7 +3022,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // 'use_scenarios_table', // Убрали, т.к. теперь визуальная таблица
         // 'monitoring_tools_table', // Убрали, т.к. теперь визуальная таблица
         // 'system_resources_table', // Убрали, т.к. теперь визуальная таблица
-        'business_metrics_table',
+        // 'business_metrics_table', // Убрали, т.к. теперь визуальная таблица
         'deliverables_table',
         'contacts_table'
     ];

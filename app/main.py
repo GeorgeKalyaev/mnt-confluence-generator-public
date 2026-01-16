@@ -591,10 +591,7 @@ async def handle_create_form(
     business_metrics_intro: Optional[str] = Form(None),
     business_metrics_table: Optional[str] = Form(None),
     # Раздел 13: Требования к Заказчику
-    customer_requirements_intro: Optional[str] = Form(None),
     customer_requirements_list: Optional[str] = Form(None),
-    customer_requirements_note_intro: Optional[str] = Form(None),
-    customer_requirements_note_list: Optional[str] = Form(None),
     # Раздел 14: Материалы
     deliverables_intro: Optional[str] = Form(None),
     deliverables_table: Optional[str] = Form(None),
@@ -690,10 +687,7 @@ async def handle_create_form(
         "system_resources_table": system_resources_table,
         "business_metrics_intro": business_metrics_intro,
         "business_metrics_table": business_metrics_table,
-        "customer_requirements_intro": customer_requirements_intro,
         "customer_requirements_list": customer_requirements_list,
-        "customer_requirements_note_intro": customer_requirements_note_intro,
-        "customer_requirements_note_list": customer_requirements_note_list,
         "deliverables_intro": deliverables_intro,
         "deliverables_table": deliverables_table,
         "contacts_table": contacts_table,
@@ -1037,10 +1031,7 @@ async def handle_edit_form(
     business_metrics_intro: Optional[str] = Form(None),
     business_metrics_table: Optional[str] = Form(None),
     # Раздел 13: Требования к Заказчику
-    customer_requirements_intro: Optional[str] = Form(None),
     customer_requirements_list: Optional[str] = Form(None),
-    customer_requirements_note_intro: Optional[str] = Form(None),
-    customer_requirements_note_list: Optional[str] = Form(None),
     # Раздел 14: Материалы
     deliverables_intro: Optional[str] = Form(None),
     deliverables_table: Optional[str] = Form(None),
@@ -1139,10 +1130,7 @@ async def handle_edit_form(
         "system_resources_table": system_resources_table,
         "business_metrics_intro": business_metrics_intro,
         "business_metrics_table": business_metrics_table,
-        "customer_requirements_intro": customer_requirements_intro,
         "customer_requirements_list": customer_requirements_list,
-        "customer_requirements_note_intro": customer_requirements_note_intro,
-        "customer_requirements_note_list": customer_requirements_note_list,
         "deliverables_intro": deliverables_intro,
         "deliverables_table": deliverables_table,
         "contacts_table": contacts_table,

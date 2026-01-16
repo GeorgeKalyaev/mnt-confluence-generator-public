@@ -577,17 +577,10 @@ def render_mnt_to_confluence_storage(
                     content_parts.append(table_html)
     
     # Раздел 13: Требования к Заказчику
-    if data.get("customer_requirements_intro") or data.get("customer_requirements_list"):
+    if data.get("customer_requirements_list"):
         sections.append(("Требования к Заказчику", 1))
         content_parts.append('<h1>13 Требования к Заказчику</h1>')
-        if data.get("customer_requirements_intro"):
-            content_parts.append(render_text_field(data["customer_requirements_intro"]))
-        if data.get("customer_requirements_list"):
-            content_parts.append(render_list_field(data["customer_requirements_list"], ordered=True))
-        if data.get("customer_requirements_note_intro"):
-            content_parts.append(render_text_field(data["customer_requirements_note_intro"]))
-        if data.get("customer_requirements_note_list"):
-            content_parts.append(render_list_field(data["customer_requirements_note_list"], ordered=True))
+        content_parts.append(render_list_field(data["customer_requirements_list"], ordered=True))
     
     # Раздел 14: Материалы, подлежащие сдаче
     if data.get("deliverables_intro") or data.get("deliverables_table"):
