@@ -619,6 +619,59 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Глобальный обработчик ошибок JavaScript -->
+    <script>
+    // Обработчик глобальных JavaScript ошибок
+    window.addEventListener('error', function(event) {
+        const errorData = {
+            error_message: event.message || 'Unknown error',
+            error_source: event.filename || 'Unknown',
+            error_line: event.lineno || 'Unknown',
+            error_col: event.colno || 'Unknown',
+            error_stack: event.error ? (event.error.stack || 'No stack trace') : 'No error object',
+            user_agent: navigator.userAgent || 'Unknown',
+            url: window.location.href || 'Unknown'
+        };
+        
+        // Отправляем ошибку на сервер для логирования
+        fetch('/api/log-js-error', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(errorData)
+        }).catch(function(err) {
+            // Если не удалось отправить ошибку, хотя бы выводим в консоль
+            console.error('Failed to log JS error to server:', err);
+        });
+    });
+    
+    // Обработчик необработанных промисов (Promise rejections)
+    window.addEventListener('unhandledrejection', function(event) {
+        const errorData = {
+            error_message: event.reason ? (event.reason.message || String(event.reason)) : 'Unhandled Promise Rejection',
+            error_source: 'Promise',
+            error_line: 'N/A',
+            error_col: 'N/A',
+            error_stack: event.reason && event.reason.stack ? event.reason.stack : 'No stack trace',
+            user_agent: navigator.userAgent || 'Unknown',
+            url: window.location.href || 'Unknown'
+        };
+        
+        // Отправляем ошибку на сервер для логирования
+        fetch('/api/log-js-error', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(errorData)
+        }).catch(function(err) {
+            console.error('Failed to log unhandled rejection to server:', err);
+        });
+    });
+    </script>
+    
     {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -689,6 +689,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+</script>
 
 <!-- JavaScript для таблицы листа согласования -->
 <script>
@@ -704,6 +705,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     console.log('Approval table script loaded, button:', addApprovalRowBtn);
+    
+    // Функция для форматирования даты в формат DD.MM.YYYY
+    function formatDate(date) {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}.${month}.${year}`;
+    }
     
     // Функция для преобразования даты в формат YYYY-MM-DD для input[type="date"]
     function formatDateForInput(date) {
@@ -772,6 +781,45 @@ document.addEventListener('DOMContentLoaded', function() {
             </td>
         `;
         return row;
+    }
+    
+    // Функция для загрузки существующих данных
+    function loadExistingApprovalData() {
+        const approvalData = approvalTableHidden.value.trim();
+        
+        if (!approvalData) {
+            // Если данных нет - добавляем одну пустую строку по умолчанию
+            const defaultRow = createApprovalRow();
+            approvalTableTbody.appendChild(defaultRow);
+            updateApprovalHiddenField();
+            return;
+        }
+        
+        const lines = approvalData.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+            // Только заголовок или пусто - добавляем одну пустую строку
+            const defaultRow = createApprovalRow();
+            approvalTableTbody.appendChild(defaultRow);
+            updateApprovalHiddenField();
+            return;
+        }
+        
+        // Пропускаем заголовок (первая строка)
+        for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split('|').map(p => p.trim());
+            if (parts.length >= 4) {
+                const rowData = {
+                    fio: parts[0] || '',
+                    position: parts[1] || '',
+                    signature: parts[2] || '',
+                    date: parts[3] || null // formatDateForInput обработает null и преобразует в нужный формат
+                };
+                const row = createApprovalRow(rowData);
+                approvalTableTbody.appendChild(row);
+            }
+        }
+        
+        updateApprovalHiddenField();
     }
     
     // Функция для обновления скрытого поля из визуальной таблицы
@@ -849,13 +897,11 @@ document.addEventListener('DOMContentLoaded', function() {
         updateApprovalHiddenField();
     });
     
-    // Добавляем одну пустую строку по умолчанию
-    const defaultRow = createApprovalRow();
-    approvalTableTbody.appendChild(defaultRow);
-    updateApprovalHiddenField();
+    // Загружаем существующие данные при загрузке страницы
+    loadExistingApprovalData();
     
     // Обновляем скрытое поле перед отправкой формы
-    const form = document.querySelector('form[action*="/mnt/create"]');
+    const form = document.querySelector('form[action*="/mnt/"]');
     if (form) {
         form.addEventListener('submit', function() {
             updateApprovalHiddenField();
@@ -864,7 +910,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <script>
-    // Инициализация редакторов таблиц для полей, где это нужно
+// Инициализация редакторов таблиц и других функций
+document.addEventListener('DOMContentLoaded', function() {
     // Инициализируем редакторы таблиц
     // history_changes_table - НЕ редактируется, заполняется автоматически
     // approval_list_table - визуальная таблица с input полями
@@ -1049,55 +1096,53 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     */
-});
-
-
-// Сохранение выбранных тегов в скрытое поле формы при создании
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form[action*="/mnt/create"]');
-    if (!form) return;
     
-    // Создаем скрытое поле для тегов
-    let hiddenInput = document.getElementById('tags_hidden');
-    if (!hiddenInput) {
-        hiddenInput = document.createElement('input');
-        hiddenInput.type = 'hidden';
-        hiddenInput.id = 'tags_hidden';
-        hiddenInput.name = 'tags';
-        form.appendChild(hiddenInput);
-    }
-    
-    // Обработка изменения чекбоксов тегов
-    const tagCheckboxes = document.querySelectorAll('.tag-checkbox');
-    tagCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const selectedTags = Array.from(document.querySelectorAll('.tag-checkbox:checked'))
-                .map(cb => cb.value)
-                .join(',');
-            hiddenInput.value = selectedTags;
-        });
-    });
-});
-
-// Превью при создании
-document.getElementById('preview-btn')?.addEventListener('click', function() {
-    // Собираем данные формы
-    const form = document.querySelector('form[action*="/mnt/"]');
-    if (!form) return;
-    
-    const formData = new FormData(form);
-    const data = {};
-    for (let [key, value] of formData.entries()) {
-        if (key !== 'publish') {
-            data[key] = value;
+    // Сохранение выбранных тегов в скрытое поле формы при создании
+    const formForTags = document.querySelector('form[action*="/mnt/create"]');
+    if (formForTags) {
+        // Создаем скрытое поле для тегов
+        let hiddenInput = document.getElementById('tags_hidden');
+        if (!hiddenInput) {
+            hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.id = 'tags_hidden';
+            hiddenInput.name = 'tags';
+            formForTags.appendChild(hiddenInput);
         }
+        
+        // Обработка изменения чекбоксов тегов
+        const tagCheckboxes = document.querySelectorAll('.tag-checkbox');
+        tagCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const selectedTags = Array.from(document.querySelectorAll('.tag-checkbox:checked'))
+                    .map(cb => cb.value)
+                    .join(',');
+                hiddenInput.value = selectedTags;
+            });
+        });
     }
     
-    // Создаем модальное окно с превью
-    const modal = document.createElement('div');
-    modal.className = 'modal fade';
-    modal.id = 'previewModal';
-    modal.innerHTML = `
+    // Превью при создании
+    const previewBtn = document.getElementById('preview-btn');
+    if (previewBtn) {
+        previewBtn.addEventListener('click', function() {
+            // Собираем данные формы
+            const formForPreview = document.querySelector('form[action*="/mnt/"]');
+            if (!formForPreview) return;
+    
+            const formData = new FormData(formForPreview);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (key !== 'publish') {
+                    data[key] = value;
+                }
+            }
+            
+            // Создаем модальное окно с превью
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.id = 'previewModal';
+            modal.innerHTML = `
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
@@ -1123,14 +1168,16 @@ document.getElementById('preview-btn')?.addEventListener('click', function() {
         </div>
     `;
     
-    document.body.appendChild(modal);
-    const bsModal = new bootstrap.Modal(modal);
-    bsModal.show();
-    
-    // Удаляем модальное окно после закрытия
-    modal.addEventListener('hidden.bs.modal', function() {
-        modal.remove();
-    });
-});
+            document.body.appendChild(modal);
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            
+            // Удаляем модальное окно после закрытия
+            modal.addEventListener('hidden.bs.modal', function() {
+                modal.remove();
+            });
+        });
+    }
+}); // конец DOMContentLoaded
 </script>
 {% endblock %}

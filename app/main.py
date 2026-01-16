@@ -1987,3 +1987,78 @@ async def trash_page(
         "success_message": request.query_params.get("success"),
         "error_message": request.query_params.get("error")
     })
+
+
+@app.post("/api/log-js-error")
+async def log_js_error(request: Request):
+    """Endpoint для логирования JavaScript ошибок с клиента"""
+    try:
+        # Получаем данные из тела запроса (JSON)
+        try:
+            body = await request.json()
+            error_message = body.get("error_message") or "Unknown error"
+            error_source = body.get("error_source") or "Unknown"
+            error_line = body.get("error_line") or "Unknown"
+            error_col = body.get("error_col") or "Unknown"
+            error_stack = body.get("error_stack") or "No stack trace"
+            user_agent = body.get("user_agent") or "Unknown"
+            url = body.get("url") or "Unknown"
+        except Exception as json_err:
+            # Если не JSON, пытаемся получить из Form данных
+            try:
+                form_data = await request.form()
+                error_message = form_data.get("error_message", "Unknown error")
+                error_source = form_data.get("error_source", "Unknown")
+                error_line = form_data.get("error_line", "Unknown")
+                error_col = form_data.get("error_col", "Unknown")
+                error_stack = form_data.get("error_stack", "No stack trace")
+                user_agent = form_data.get("user_agent", "Unknown")
+                url = form_data.get("url", "Unknown")
+            except:
+                error_message = "Failed to parse error data"
+                error_source = "Unknown"
+                error_line = "Unknown"
+                error_col = "Unknown"
+                error_stack = f"JSON parse error: {str(json_err)}"
+                user_agent = request.headers.get("user-agent", "Unknown")
+                url = str(request.url)
+        
+        # Получаем IP и другие данные из request
+        user_ip = request.client.host if request.client else "unknown"
+        request_id = getattr(request.state, 'request_id', None) if hasattr(request, 'state') else 'no-request-id'
+        
+        # Формируем детальное сообщение об ошибке
+        error_details = {
+            "message": error_message or "Unknown error",
+            "source": error_source or "Unknown",
+            "line": error_line or "Unknown",
+            "column": error_col or "Unknown",
+            "stack": error_stack or "No stack trace",
+            "url": url or str(request.url),
+            "user_agent": user_agent or request.headers.get("user-agent", "Unknown")
+        }
+        
+        # Логируем ошибку
+        log_error(
+            error_type="JavaScript Error",
+            error_message=f"JS Error: {error_details['message']}",
+            error_details=error_details,
+            request_id=request_id,
+            user_ip=user_ip
+        )
+        
+        logger.error(
+            f"JavaScript ошибка на клиенте: {error_details['message']}",
+            extra={
+                'request_id': request_id,
+                'user_ip': user_ip,
+                'error_source': error_details['source'],
+                'error_line': error_details['line'],
+                'error_url': error_details['url']
+            }
+        )
+        
+        return JSONResponse({"status": "logged"})
+    except Exception as e:
+        logger.exception(f"Ошибка при логировании JS ошибки: {e}")
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
