@@ -13,6 +13,9 @@ import mimetypes
 import io
 import csv
 import time
+import os
+from pathlib import Path
+import uuid
 
 from app.database import get_db, check_connection
 from app.models import MNTData, MNTDocument, MNTCreateRequest, MNTListResponse, MNTUpdateRequest
@@ -902,6 +905,27 @@ async def handle_create_form(
                 except Exception as e:
                     logger.error(f"Ошибка загрузки изображения информационной архитектуры: {e}", exc_info=True)
             
+            # Загружаем изображение max_performance.png для терминологии, если используется термин "Максимальная производительность"
+            terminology_table = data.get("terminology_table", "")
+            has_max_performance_term = "Максимальная производительность" in terminology_table or "максимальная производительность" in terminology_table.lower()
+            if terminology_table and has_max_performance_term:
+                try:
+                    image_path = Path("app/static/images/max_performance.png")
+                    if image_path.exists():
+                        with open(image_path, "rb") as f:
+                            file_content = f.read()
+                        await confluence_client.upload_attachment(
+                            page_id=page_id,
+                            filename="max_performance.png",
+                            file_content=file_content,
+                            content_type="image/png"
+                        )
+                        logger.info("Загружено изображение max_performance.png для терминологии")
+                    else:
+                        logger.warning(f"Файл {image_path} не найден")
+                except Exception as e:
+                    logger.error(f"Ошибка загрузки изображения max_performance.png: {e}", exc_info=True)
+            
             # Обновляем данные в БД с новой историей изменений и устанавливаем статус "published"
             update_mnt(db, mnt_id, {
                 "title": title_for_db,
@@ -1386,6 +1410,27 @@ async def handle_edit_form(
                     )
                 except Exception as e:
                     logger.error(f"Ошибка загрузки изображения информационной архитектуры: {e}", exc_info=True)
+            
+            # Загружаем изображение max_performance.png для терминологии, если используется термин "Максимальная производительность"
+            terminology_table = data.get("terminology_table", "")
+            has_max_performance_term = "Максимальная производительность" in terminology_table or "максимальная производительность" in terminology_table.lower()
+            if terminology_table and has_max_performance_term:
+                try:
+                    image_path = Path("app/static/images/max_performance.png")
+                    if image_path.exists():
+                        with open(image_path, "rb") as f:
+                            file_content = f.read()
+                        await confluence_client.upload_attachment(
+                            page_id=page_id,
+                            filename="max_performance.png",
+                            file_content=file_content,
+                            content_type="image/png"
+                        )
+                        logger.info("Загружено изображение max_performance.png для терминологии")
+                    else:
+                        logger.warning(f"Файл {image_path} не найден")
+                except Exception as e:
+                    logger.error(f"Ошибка загрузки изображения max_performance.png: {e}", exc_info=True)
             
             # Обновляем данные в БД с новой историей изменений и устанавливаем статус "published"
             update_mnt(db, mnt_id, {
@@ -2062,3 +2107,48 @@ async def log_js_error(request: Request):
     except Exception as e:
         logger.exception(f"Ошибка при логировании JS ошибки: {e}")
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+@app.post("/api/upload-terminology-image")
+async def upload_terminology_image(
+    request: Request,
+    file: UploadFile = File(...)
+):
+    """Endpoint для загрузки изображений терминологии"""
+    try:
+        # Проверяем, что это изображение
+        if not file.content_type or not file.content_type.startswith('image/'):
+            return JSONResponse(
+                {"status": "error", "message": "Файл должен быть изображением"},
+                status_code=400
+            )
+        
+        # Создаем папку для загрузок, если её нет
+        upload_dir = Path("app/static/uploads/terminology")
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Генерируем уникальное имя файла
+        file_ext = Path(file.filename).suffix if file.filename else '.jpg'
+        unique_filename = f"{uuid.uuid4()}{file_ext}"
+        file_path = upload_dir / unique_filename
+        
+        # Сохраняем файл
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Возвращаем путь для использования в статических файлах
+        static_path = f"/static/uploads/terminology/{unique_filename}"
+        
+        logger.info(f"Загружено изображение терминологии: {static_path}")
+        
+        return JSONResponse({
+            "status": "success",
+            "path": static_path,
+            "filename": unique_filename
+        })
+    except Exception as e:
+        logger.exception(f"Ошибка при загрузке изображения терминологии: {e}")
+        return JSONResponse(
+            {"status": "error", "message": str(e)},
+            status_code=500
+        )

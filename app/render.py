@@ -89,8 +89,28 @@ def render_table_from_text(text: str, table_num: int = None, caption: str = None
         else:
             # Обычная строка
             table_html.append('<tr>')
-            for col in columns:
-                table_html.append(f'<td>{escape_xml(col)}</td>')
+            
+            # Определяем термин (первая колонка)
+            term = columns[0].strip() if len(columns) > 0 else ''
+            is_max_performance = term.lower() in ['максимальная производительность', 'максимальнаяпроизводительность']
+            
+            for j, col in enumerate(columns):
+                if j == 0:
+                    # Колонка с термином
+                    table_html.append(f'<td>{escape_xml(col.strip())}</td>')
+                elif j == 1:
+                    # Колонка с определением
+                    definition = col.strip()
+                    definition_html = escape_xml(definition)
+                    
+                    # Если термин "Максимальная производительность", добавляем изображение
+                    if is_max_performance:
+                        definition_html += f'<br/><ac:image><ri:attachment ri:filename="max_performance.png" /></ac:image>'
+                    
+                    table_html.append(f'<td>{definition_html}</td>')
+                else:
+                    # Остальные колонки
+                    table_html.append(f'<td>{escape_xml(col.strip())}</td>')
             table_html.append('</tr>')
     
     table_html.append('</table>')
