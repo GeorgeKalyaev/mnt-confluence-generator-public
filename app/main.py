@@ -413,6 +413,55 @@ async def api_update_mnt(mnt_id: int, request: MNTUpdateRequest, db: Session = D
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.get("/api/autocomplete/projects")
+async def api_autocomplete_projects(db: Session = Depends(get_db)):
+    """API: Автодополнение для списка проектов"""
+    try:
+        result = db.execute(
+            text("SELECT DISTINCT project FROM mnt.documents WHERE project IS NOT NULL AND project != '' ORDER BY project")
+        ).fetchall()
+        projects = [row[0] for row in result if row[0]]
+        return projects
+    except Exception as e:
+        logger.error(f"Ошибка получения списка проектов: {e}", exc_info=True)
+        return []
+
+
+@app.get("/api/autocomplete/authors")
+async def api_autocomplete_authors(db: Session = Depends(get_db)):
+    """API: Автодополнение для списка авторов"""
+    try:
+        result = db.execute(
+            text("SELECT DISTINCT author FROM mnt.documents WHERE author IS NOT NULL AND author != '' ORDER BY author")
+        ).fetchall()
+        authors = [row[0] for row in result if row[0]]
+        return authors
+    except Exception as e:
+        logger.error(f"Ошибка получения списка авторов: {e}", exc_info=True)
+        return []
+
+
+@app.get("/api/autocomplete/tags")
+async def api_autocomplete_tags(db: Session = Depends(get_db)):
+    """API: Автодополнение для списка тегов"""
+    try:
+        # Получаем все теги из JSONB поля data_json
+        result = db.execute(
+            text("""
+                SELECT DISTINCT jsonb_array_elements_text(data_json->'tags') as tag
+                FROM mnt.documents
+                WHERE data_json->'tags' IS NOT NULL 
+                  AND jsonb_array_length(data_json->'tags') > 0
+                ORDER BY tag
+            """)
+        ).fetchall()
+        tags = [row[0] for row in result if row[0] and isinstance(row[0], str) and row[0].strip()]
+        return tags
+    except Exception as e:
+        logger.error(f"Ошибка получения списка тегов: {e}", exc_info=True)
+        return []
+
+
 @app.post("/api/mnt/{mnt_id}/publish")
 async def api_publish_mnt(mnt_id: int, db: Session = Depends(get_db)):
     """API: Публикация/обновление МНТ в Confluence"""
