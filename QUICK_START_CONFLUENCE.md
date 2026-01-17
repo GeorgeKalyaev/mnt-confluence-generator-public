@@ -11,7 +11,7 @@
 Выполните в терминале:
 
 ```bash
-cd C:\Users\kalya\mnt-confluence-generator
+cd путь/к/проекту/mnt-confluence-generator
 docker run -d --name confluence-test -p 8090:8090 -v confluence-data:/var/atlassian/application-data/confluence atlassian/confluence-server:latest
 ```
 
