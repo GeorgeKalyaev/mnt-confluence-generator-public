@@ -204,9 +204,212 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Проверка обязательных полей разделов 3-15 перед публикацией
+    function validateSections3To15() {
+        const errors = [];
+        
+        // Список обязательных полей (разделы 3-15)
+        const requiredFields = [
+            { id: 'abbreviations_table', name: '3.1 Сокращения (таблица)', isTable: true },
+            { id: 'terminology_table', name: '3.2 Терминология (таблица)', isTable: true },
+            { id: 'introduction_text', name: '4. Введение', isTable: false },
+            { id: 'goals_business', name: '5.1 Цели НТ (бизнес)', isTable: false },
+            { id: 'goals_technical', name: '5.1 Цели НТ (технические)', isTable: false },
+            { id: 'tasks_nt', name: '5.2 Задачи НТ', isTable: false },
+            { id: 'limitations_list', name: '6.1 Ограничения НТ', isTable: false },
+            { id: 'risks_table', name: '6.2 Риски НТ (таблица)', isTable: true },
+            { id: 'object_general', name: '7.1 Общие сведения', isTable: false },
+            { id: 'performance_requirements', name: '7.2 Требования к производительности', isTable: false },
+            { id: 'component_architecture_text', name: '7.3.1 Компонентная архитектура', isTable: false },
+            { id: 'test_stand_architecture_text', name: '8.1 Архитектура тестового стенда', isTable: false },
+            { id: 'planned_tests_intro', name: '9. Стратегия тестирования (вводный текст)', isTable: false },
+            { id: 'planned_tests_table', name: '9.1 Планируемые тесты (таблица)', isTable: true },
+            { id: 'completion_conditions', name: '9.2 Условия завершения НТ', isTable: false },
+            { id: 'database_preparation_text', name: '10. Наполнение БД', isTable: false },
+            { id: 'load_modeling_principles', name: '11.1 Общие принципы моделирования нагрузки', isTable: false },
+            { id: 'load_profiles_intro', name: '11.2 Профили нагрузки (вводный текст)', isTable: false },
+            { id: 'load_profiles_table', name: '11.2 Профили нагрузки (таблица)', isTable: true },
+            { id: 'use_scenarios_intro', name: '11.3 Сценарии использования (вводный текст)', isTable: false },
+            { id: 'use_scenarios_table', name: '11.3 Сценарии использования (таблица)', isTable: true },
+            { id: 'emulators_description', name: '11.4 Описание работы эмуляторов', isTable: false },
+            { id: 'monitoring_intro', name: '12. Мониторинг (вводный текст)', isTable: false },
+            { id: 'monitoring_tools_intro', name: '12.1 Средства мониторинга (вводный текст)', isTable: false },
+            { id: 'monitoring_tools_table', name: '12.1 Средства мониторинга (таблица)', isTable: true },
+            { id: 'system_resources_intro', name: '12.2.1 Мониторинг системных ресурсов (вводный текст)', isTable: false },
+            { id: 'system_resources_table', name: '12.2.1 Мониторинг системных ресурсов (таблица)', isTable: true },
+            { id: 'business_metrics_intro', name: '12.2.2 Мониторинг бизнес-метрик (вводный текст)', isTable: false },
+            { id: 'business_metrics_table', name: '12.2.2 Мониторинг бизнес-метрик (таблица)', isTable: true },
+            { id: 'customer_requirements_list', name: '13. Требования к Заказчику', isTable: false },
+            { id: 'deliverables_intro', name: '14. Материалы, подлежащие сдаче (вводный текст)', isTable: false },
+            { id: 'deliverables_table', name: '14. Материалы, подлежащие сдаче (таблица)', isTable: true },
+            { id: 'deliverables_working_docs_table', name: '14. Рабочие документы (таблица)', isTable: true },
+            { id: 'contacts_table', name: '15. Контакты (таблица)', isTable: true }
+        ];
+        
+        // Проверяем поля
+        requiredFields.forEach(field => {
+            const element = document.getElementById(field.id);
+            if (!element) {
+                // Поле не найдено - пропускаем
+                return;
+            }
+            
+            let value = element.value ? element.value.trim() : '';
+            let isEmpty = false;
+            
+            if (field.isTable) {
+                // Для таблиц: проверяем, что есть данные (не только заголовок)
+                // Формат таблицы: "Заголовок1|Заголовок2\nДанные1|Данные2\n..."
+                
+                // Сначала пытаемся проверить скрытое поле
+                if (!value) {
+                    // Если скрытое поле пустое, проверяем визуальную таблицу напрямую
+                    // Ищем соответствующую визуальную таблицу по ID поля
+                    const tableId = field.id.replace('_table', '_visual_table');
+                    const visualTable = document.getElementById(tableId);
+                    if (visualTable) {
+                        const tbody = visualTable.querySelector('tbody');
+                        if (tbody) {
+                            const rows = tbody.querySelectorAll('tr');
+                            // Проверяем, что есть хотя бы одна строка с данными
+                            let hasDataRow = false;
+                            for (let row of rows) {
+                                const inputs = row.querySelectorAll('input, textarea');
+                                for (let input of inputs) {
+                                    if (input.value && input.value.trim() && input.value.trim() !== '-') {
+                                        hasDataRow = true;
+                                        break;
+                                    }
+                                }
+                                if (hasDataRow) break;
+                            }
+                            if (!hasDataRow) {
+                                isEmpty = true;
+                            }
+                        } else {
+                            isEmpty = true;
+                        }
+                    } else {
+                        isEmpty = true;
+                    }
+                } else {
+                    // Проверяем, что есть хотя бы одна строка данных (не только заголовок)
+                    const lines = value.split('\n').filter(line => line.trim());
+                    if (lines.length <= 1) {
+                        // Только заголовок, нет данных - проверяем визуальную таблицу
+                        const tableId = field.id.replace('_table', '_visual_table');
+                        const visualTable = document.getElementById(tableId);
+                        if (visualTable) {
+                            const tbody = visualTable.querySelector('tbody');
+                            if (tbody) {
+                                const rows = tbody.querySelectorAll('tr');
+                                let hasDataRow = false;
+                                for (let row of rows) {
+                                    const inputs = row.querySelectorAll('input, textarea');
+                                    for (let input of inputs) {
+                                        if (input.value && input.value.trim() && input.value.trim() !== '-') {
+                                            hasDataRow = true;
+                                            break;
+                                        }
+                                    }
+                                    if (hasDataRow) break;
+                                }
+                                if (!hasDataRow) {
+                                    isEmpty = true;
+                                }
+                            } else {
+                                isEmpty = true;
+                            }
+                        } else {
+                            isEmpty = true;
+                        }
+                    } else {
+                        // Проверяем, что есть хотя бы одна строка с данными (не пустая после разделения на колонки)
+                        let hasDataRow = false;
+                        for (let i = 1; i < lines.length; i++) {
+                            const columns = lines[i].split('|').map(col => col.trim()).filter(col => col);
+                            if (columns.length > 0 && columns.some(col => col && col !== '-' && col !== '')) {
+                                hasDataRow = true;
+                                break;
+                            }
+                        }
+                        if (!hasDataRow) {
+                            isEmpty = true;
+                        }
+                    }
+                }
+            } else {
+                // Для текстовых полей: проверяем, что значение не пустое
+                // Также проверяем, что это не только дефолтные значения типа "-" или "•-"
+                if (!value) {
+                    isEmpty = true;
+                } else {
+                    // Убираем маркеры списков и проверяем наличие реального текста
+                    const cleanValue = value
+                        .replace(/^[•\-\d+\.]\s*/gm, '') // Убираем маркеры списков
+                        .replace(/^-\s*$/gm, '') // Убираем строки с только "-"
+                        .replace(/^•-\s*$/gm, '') // Убираем строки с "•-"
+                        .trim();
+                    
+                    if (!cleanValue || cleanValue.length === 0) {
+                        isEmpty = true;
+                    }
+                }
+            }
+            
+            if (isEmpty) {
+                console.log(`[VALIDATION] Поле "${field.name}" (${field.id}) пустое или не заполнено`);
+                errors.push({ field: element, name: field.name });
+            } else {
+                console.log(`[VALIDATION] Поле "${field.name}" (${field.id}) заполнено`);
+            }
+        });
+        
+        if (errors.length > 0) {
+            console.log(`[VALIDATION] Найдено ${errors.length} незаполненных обязательных полей:`, errors.map(e => e.name));
+        }
+        
+        return errors;
+    }
+    
+    // Функция для обновления всех скрытых полей таблиц из визуальных таблиц
+    function updateAllTableHiddenFields() {
+        // Список функций обновления (они определены в других скриптах)
+        const updateFunctions = [
+            'updateLoadProfilesHiddenField',
+            'updateUseScenariosHiddenField',
+            'updateAbbreviationsHiddenField',
+            'updateTerminologyHiddenField',
+            'updateRisksHiddenField',
+            'updatePlannedTestsHiddenField',
+            'updateDatabasePreparationHiddenField',
+            'updateMonitoringToolsHiddenField',
+            'updateSystemResourcesHiddenField',
+            'updateBusinessMetricsHiddenField',
+            'updateDeliverablesHiddenField',
+            'updateDeliverablesWorkingDocsHiddenField',
+            'updateContactsHiddenField',
+            'updateStandComparisonHiddenField'
+        ];
+        
+        updateFunctions.forEach(funcName => {
+            if (typeof window[funcName] === 'function') {
+                try {
+                    window[funcName]();
+                } catch (e) {
+                    console.warn(`Ошибка при обновлении ${funcName}:`, e);
+                }
+            }
+        });
+    }
+    
     // Валидация при отправке формы
     form.addEventListener('submit', function(e) {
         let isValid = true;
+        
+        // Проверяем, публикуем ли мы в Confluence
+        const publishHidden = document.getElementById('publish_hidden');
+        const isPublishing = publishHidden && publishHidden.value === '1';
         
         if (projectNameInput && !validateRequired(projectNameInput, 'Название проекта')) {
             isValid = false;
@@ -271,15 +474,55 @@ document.addEventListener('DOMContentLoaded', function() {
             isValid = false;
         }
         
+        // Дополнительная валидация разделов 3-15 при публикации в Confluence
+        if (isPublishing) {
+            // Перед валидацией обновляем все скрытые поля таблиц из визуальных таблиц
+            // Это нужно, чтобы данные из визуальных таблиц попали в скрытые поля
+            updateAllTableHiddenFields();
+            
+            const sectionErrors = validateSections3To15();
+            if (sectionErrors.length > 0) {
+                isValid = false;
+                
+                // Показываем ошибки
+                sectionErrors.forEach(error => {
+                    if (error.field.type === 'hidden') {
+                        // Для скрытых полей ищем связанную таблицу или элемент
+                        const fieldId = error.field.id;
+                        // Пытаемся найти связанный визуальный элемент
+                        let visualElement = document.querySelector(`[data-table-field="${fieldId}"]`);
+                        if (!visualElement) {
+                            // Ищем родительский form-section
+                            const section = error.field.closest('.form-section');
+                            if (section) {
+                                visualElement = section.querySelector('h3, h4, h5') || section;
+                            }
+                        }
+                        if (visualElement) {
+                            // Добавляем класс ошибки к секции
+                            visualElement.closest('.form-section')?.classList.add('border-danger', 'border-2', 'p-2');
+                        }
+                    } else {
+                        showError(error.field, `${error.name} обязательно для заполнения перед публикацией`);
+                    }
+                });
+                
+                // Показываем общее предупреждение
+                alert('⚠ Не все обязательные поля заполнены!\n\nПеред публикацией в Confluence необходимо заполнить все обязательные поля разделов 3-15.\n\nВы можете сохранить МНТ как черновик и заполнить недостающие поля позже.');
+            }
+        }
+        
         if (!isValid) {
             e.preventDefault();
             e.stopPropagation();
             
             // Прокручиваем к первой ошибке
-            const firstError = form.querySelector('.is-invalid');
+            const firstError = form.querySelector('.is-invalid, .border-danger');
             if (firstError) {
                 firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                firstError.focus();
+                if (firstError.tagName === 'INPUT' || firstError.tagName === 'TEXTAREA') {
+                    firstError.focus();
+                }
             }
             
             return false;
