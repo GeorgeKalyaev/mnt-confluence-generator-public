@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Сравнение версий МНТ - МНТ Generator{% endblock %}
+
+{% block breadcrumbs %}
+    <nav aria-label="breadcrumb" class="bg-light border-bottom py-2">
+        <div class="container-fluid">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/">Главная</a></li>
+                <li class="breadcrumb-item"><a href="/mnt/list">Список МНТ</a></li>
+                <li class="breadcrumb-item"><a href="/mnt/{{ document.id }}/edit">Редактировать МНТ</a></li>
+                <li class="breadcrumb-item"><a href="/mnt/{{ document.id }}/versions">История версий</a></li>
+                <li class="breadcrumb-item active">Сравнение версий</li>
+            </ol>
+        </div>
+    </nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Сравнение версий МНТ</h1>
+        <a href="/mnt/{{ document.id }}/versions" class="btn btn-secondary">← Назад к истории версий</a>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Информация о сравнении</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Версия 1 (старая)</h6>
+                    <p><strong>Версия:</strong> {{ version1.version_number }}</p>
+                    <p><strong>Дата:</strong> {{ version1.created_at.strftime('%d.%m.%Y %H:%M') if version1.created_at else 'N/A' }}</p>
+                    <p><strong>Автор:</strong> {{ version1.created_by or version1.author }}</p>
+                    <p><strong>Статус:</strong> 
+                        {% if version1.status == 'published' %}
+                            <span class="badge bg-success">Опубликовано</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Черновик</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <h6>Версия 2 (новая)</h6>
+                    {% if compare_with_current %}
+                    <p><strong>Текущая версия</strong> (не сохранена в истории)</p>
+                    <p><strong>Дата:</strong> {{ document.updated_at.strftime('%d.%m.%Y %H:%M') if document.updated_at else 'N/A' }}</p>
+                    <p><strong>Статус:</strong> 
+                        {% if document.status == 'published' %}
+                            <span class="badge bg-success">Опубликовано</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Черновик</span>
+                        {% endif %}
+                    </p>
+                    {% else %}
+                    <p><strong>Версия:</strong> {{ version2.version_number }}</p>
+                    <p><strong>Дата:</strong> {{ version2.created_at.strftime('%d.%m.%Y %H:%M') if version2.created_at else 'N/A' }}</p>
+                    <p><strong>Автор:</strong> {{ version2.created_by or version2.author }}</p>
+                    <p><strong>Статус:</strong> 
+                        {% if version2.status == 'published' %}
+                            <span class="badge bg-success">Опубликовано</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Черновик</span>
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+            <hr>
+            <p><strong>Общая статистика:</strong></p>
+            <ul>
+                <li>Изменено текстовых полей: {{ diff_result.summary.fields_changed_count }}</li>
+                <li>Изменено таблиц: {{ diff_result.summary.tables_changed_count }}</li>
+                <li>Изменено метаданных: {{ diff_result.summary.metadata_changed_count }}</li>
+                <li><strong>Всего изменений: {{ diff_result.summary.total_changes }}</strong></li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Изменения в метаданных -->
+    {% if diff_result.metadata_changed %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Изменения в метаданных</h5>
+        </div>
+        <div class="card-body">
+            {% for field, change in diff_result.metadata_changed.items() %}
+                {% if change.changed %}
+                <div class="mb-3">
+                    <h6>{{ field|title }}</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="alert alert-danger mb-0">
+                                <strong>Старое значение:</strong><br>
+                                {% if field == 'tags' %}
+                                    {% for tag in change.old_value %}
+                                        <span class="badge bg-secondary">{{ tag }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    {{ change.old_value or '(пусто)' }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-success mb-0">
+                                <strong>Новое значение:</strong><br>
+                                {% if field == 'tags' %}
+                                    {% for tag in change.new_value %}
+                                        <span class="badge bg-primary">{{ tag }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    {{ change.new_value or '(пусто)' }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Изменения в текстовых полях -->
+    {% if diff_result.fields_changed %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Изменения в текстовых полях</h5>
+        </div>
+        <div class="card-body">
+            {% for field_change in diff_result.fields_changed %}
+            <div class="mb-4 border-bottom pb-4">
+                <h6>{{ field_change.field_label }}</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card border-danger">
+                            <div class="card-header bg-danger text-white">
+                                <strong>Старая версия</strong>
+                            </div>
+                            <div class="card-body">
+                                <pre class="mb-0" style="white-space: pre-wrap; font-size: 0.9em;">{{ field_change.old_value or '(пусто)' }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <strong>Новая версия</strong>
+                            </div>
+                            <div class="card-body">
+                                <pre class="mb-0" style="white-space: pre-wrap; font-size: 0.9em;">{{ field_change.new_value or '(пусто)' }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Изменения в таблицах -->
+    {% if diff_result.tables_changed %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Изменения в таблицах</h5>
+        </div>
+        <div class="card-body">
+            {% for table_change in diff_result.tables_changed %}
+            <div class="mb-4 border-bottom pb-4">
+                <h6>{{ table_change.field_label }}</h6>
+                
+                {% if table_change.diff.added_rows %}
+                <div class="alert alert-success">
+                    <strong>Добавленные строки:</strong>
+                    <ul class="mb-0">
+                        {% for added in table_change.diff.added_rows %}
+                        <li>Строка {{ added.row_number }}: {{ added.row|join(' | ') }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                {% if table_change.diff.removed_rows %}
+                <div class="alert alert-danger">
+                    <strong>Удаленные строки:</strong>
+                    <ul class="mb-0">
+                        {% for removed in table_change.diff.removed_rows %}
+                        <li>Строка {{ removed.row_number }}: {{ removed.row|join(' | ') }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                {% if table_change.diff.modified_rows %}
+                <div class="alert alert-warning">
+                    <strong>Измененные строки:</strong>
+                    {% for modified in table_change.diff.modified_rows %}
+                    <div class="mb-3">
+                        <p><strong>Строка {{ modified.old_row_number }} → {{ modified.new_row_number }}:</strong></p>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card border-danger">
+                                    <div class="card-body">
+                                        <pre class="mb-0" style="font-size: 0.85em;">{{ modified.old_row|join(' | ') }}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-success">
+                                    <div class="card-body">
+                                        <pre class="mb-0" style="font-size: 0.85em;">{{ modified.new_row|join(' | ') }}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% if modified.cell_changes %}
+                        <p class="mt-2"><strong>Измененные ячейки:</strong></p>
+                        <ul>
+                            {% for cell in modified.cell_changes %}
+                            <li>Колонка {{ cell.column_index + 1 }}: 
+                                <span class="text-danger">"{{ cell.old_value }}"</span> → 
+                                <span class="text-success">"{{ cell.new_value }}"</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if diff_result.summary.total_changes == 0 %}
+    <div class="alert alert-info">
+        <strong>ℹ️</strong> Изменений не обнаружено. Версии идентичны.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

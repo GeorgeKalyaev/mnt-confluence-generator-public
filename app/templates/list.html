@@ -222,6 +222,7 @@
                             👁️ Просмотр
                         </button>
                         <a href="/mnt/{{ doc.id }}/edit" class="btn btn-sm btn-outline-primary">✏️ Редактировать</a>
+                        <a href="/mnt/{{ doc.id }}/versions" class="btn btn-sm btn-outline-info" title="История версий">📜 История</a>
                         <form method="post" action="/mnt/{{ doc.id }}/duplicate" style="display: inline;" 
                               onsubmit="return confirm('Создать копию этого МНТ?\\n\\nКопия будет создана как черновик с названием \"{{ doc.title }} (копия)\".\\n\\nИстория изменений и лист согласования начнутся заново.');">
                             <button type="submit" class="btn btn-sm btn-outline-info" title="Создать копию МНТ">

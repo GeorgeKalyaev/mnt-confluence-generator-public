@@ -24,8 +24,11 @@ from app.db_operations import (
     update_confluence_info, set_error_status,
     get_tags, create_tag, get_document_tags, set_document_tags,
     log_action, get_action_history,
-    soft_delete_mnt, restore_mnt, get_mnt_with_deleted
+    soft_delete_mnt, restore_mnt, get_mnt_with_deleted,
+    create_document_version, get_latest_version_from_history, increment_version_number,
+    get_document_versions, get_document_version
 )
+from app.version_diff import compare_versions
 from app.diff_tracker import compare_mnt_data
 from app.confluence import get_confluence_client, ConfluenceClient, is_confluence_configured
 from app.render import render_mnt_to_confluence_storage
@@ -348,6 +351,85 @@ async def edit_page(
     except Exception as e:
         logger.error(f"Ошибка при загрузке страницы редактирования МНТ {mnt_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
+
+
+# ==================== Helper Functions for Versions ====================
+
+def create_version_after_save(
+    db: Session,
+    mnt_id: int,
+    document: dict,
+    data_json: dict,
+    author: str,
+    status: str,
+    confluence_page_id: Optional[int] = None,
+    confluence_page_url: Optional[str] = None,
+    last_publish_at: Optional[datetime] = None
+) -> Optional[dict]:
+    """Создает версию МНТ после сохранения/публикации
+    
+    Args:
+        db: Сессия БД
+        mnt_id: ID МНТ документа
+        document: Полный объект документа (для получения текущих данных)
+        data_json: JSON данные документа
+        author: Автор текущего сохранения
+        status: Статус версии (draft/published)
+        confluence_page_id: ID страницы в Confluence (если опубликована)
+        confluence_page_url: URL страницы в Confluence (если опубликована)
+        last_publish_at: Дата публикации (если опубликована)
+    
+    Returns:
+        Dict с информацией о созданной версии или None, если версия не была создана
+    """
+    try:
+        # Получаем последнюю версию из таблицы "История изменений"
+        latest_version = get_latest_version_from_history(data_json)
+        
+        if not latest_version:
+            # Если версии нет в таблице, не создаем версию (это первое сохранение)
+            logger.debug(f"Версия не найдена в таблице 'История изменений' для МНТ {mnt_id}, пропускаем создание версии")
+            return None
+        
+        # ВАЖНО: Используем ТУ ЖЕ версию, что в "Истории изменений", БЕЗ инкремента
+        # Версия в mnt.document_versions должна совпадать с версией в "Истории изменений"
+        version_number = latest_version
+        
+        # Проверяем, не существует ли уже версия с таким номером
+        # get_document_versions возвращает кортеж (versions, total)
+        existing_versions, _ = get_document_versions(db, mnt_id, skip=0, limit=100)
+        existing_version_numbers = [v.get("version_number") for v in existing_versions]
+        
+        if version_number in existing_version_numbers:
+            # Версия уже существует, пропускаем создание
+            logger.debug(f"Версия {version_number} уже существует для МНТ {mnt_id}, пропускаем создание")
+            return None
+        
+        # Создаем версию
+        version_data = create_document_version(
+            db=db,
+            mnt_id=mnt_id,
+            version_number=version_number,
+            title=document.get('title', ''),
+            project=document.get('project', ''),
+            author=author,
+            data_json=data_json,
+            status=status,
+            confluence_space=document.get('confluence_space'),
+            confluence_parent_id=document.get('confluence_parent_id'),
+            confluence_page_id=confluence_page_id,
+            confluence_page_url=confluence_page_url,
+            last_publish_at=last_publish_at,
+            created_by=author
+        )
+        
+        logger.info(f"Создана версия {version_number} для МНТ {mnt_id} (из 'Истории изменений')")
+        return version_data
+        
+    except Exception as e:
+        logger.error(f"Ошибка при создании версии для МНТ {mnt_id}: {e}", exc_info=True)
+        # Не прерываем процесс сохранения, если создание версии не удалось
+        return None
 
 
 @app.get("/mnt/{mnt_id}/view", response_class=JSONResponse)
@@ -1036,17 +1118,33 @@ async def handle_create_form(
                     if image_path.exists():
                         with open(image_path, "rb") as f:
                             file_content = f.read()
-                        await confluence_client.upload_attachment(
-                            page_id=page_id,
-                            filename="max_performance.png",
-                            file_content=file_content,
-                            content_type="image/png"
-                        )
-                        logger.info("Загружено изображение max_performance.png для терминологии")
+                        # Проверяем, существует ли уже это изображение в Confluence
+                        try:
+                            existing_attachments = await confluence_client.get_attachments(page_id)
+                            has_max_performance = any(att.get("title") == "max_performance.png" for att in existing_attachments)
+                        except:
+                            # Если не удалось получить список вложений, предполагаем, что файла нет
+                            has_max_performance = False
+                        
+                        if not has_max_performance:
+                            await confluence_client.upload_attachment(
+                                page_id=page_id,
+                                filename="max_performance.png",
+                                file_content=file_content,
+                                content_type="image/png"
+                            )
+                            logger.info("Загружено изображение max_performance.png для терминологии")
+                        else:
+                            logger.debug("Изображение max_performance.png уже существует в Confluence, пропускаем загрузку")
                     else:
                         logger.warning(f"Файл {image_path} не найден")
                 except Exception as e:
-                    logger.error(f"Ошибка загрузки изображения max_performance.png: {e}", exc_info=True)
+                    # Ошибка загрузки изображения не должна блокировать публикацию
+                    error_msg = str(e)
+                    if "same file name as an existing attachment" in error_msg.lower() or "already exists" in error_msg.lower() or "Cannot add a new attachment with same file name" in error_msg:
+                        logger.debug("Изображение max_performance.png уже существует в Confluence, пропускаем загрузку")
+                    else:
+                        logger.warning(f"Ошибка загрузки изображения max_performance.png (не критично, публикация продолжается): {e}")
             
             # Обновляем данные в БД с новой историей изменений и устанавливаем статус "published"
             update_mnt(db, mnt_id, {
@@ -1068,6 +1166,23 @@ async def handle_create_form(
             log_action(db, mnt_id, author or "unknown", "published", 
                       f"МНТ опубликован в Confluence. Page ID: {page_id}",
                       {"page_id": page_id, "page_url": result_confluence["url"], "space": confluence_space})
+            
+            # ВЕРСИЯ СОЗДАЕТСЯ ТОЛЬКО ПОСЛЕ УСПЕШНОГО ЗАВЕРШЕНИЯ ВСЕХ ОПЕРАЦИЙ ПУБЛИКАЦИИ
+            # Получаем обновленный документ после публикации для создания версии
+            document_after_publish = get_mnt(db, mnt_id)
+            if document_after_publish:
+                # Создаем версию после успешной публикации
+                create_version_after_save(
+                    db=db,
+                    mnt_id=mnt_id,
+                    document=document_after_publish,
+                    data_json=document_after_publish.get("data_json", {}),
+                    author=author,
+                    status="published",
+                    confluence_page_id=page_id,
+                    confluence_page_url=result_confluence["url"],
+                    last_publish_at=datetime.now()
+                )
         except Exception as e:
             # Сохраняем ошибку в БД
             error_msg = str(e)
@@ -1509,17 +1624,33 @@ async def handle_edit_form(
                     if image_path.exists():
                         with open(image_path, "rb") as f:
                             file_content = f.read()
-                        await confluence_client.upload_attachment(
-                            page_id=page_id,
-                            filename="max_performance.png",
-                            file_content=file_content,
-                            content_type="image/png"
-                        )
-                        logger.info("Загружено изображение max_performance.png для терминологии")
+                        # Проверяем, существует ли уже это изображение в Confluence
+                        try:
+                            existing_attachments = await confluence_client.get_attachments(page_id)
+                            has_max_performance = any(att.get("title") == "max_performance.png" for att in existing_attachments)
+                        except:
+                            # Если не удалось получить список вложений, предполагаем, что файла нет
+                            has_max_performance = False
+                        
+                        if not has_max_performance:
+                            await confluence_client.upload_attachment(
+                                page_id=page_id,
+                                filename="max_performance.png",
+                                file_content=file_content,
+                                content_type="image/png"
+                            )
+                            logger.info("Загружено изображение max_performance.png для терминологии")
+                        else:
+                            logger.debug("Изображение max_performance.png уже существует в Confluence, пропускаем загрузку")
                     else:
                         logger.warning(f"Файл {image_path} не найден")
                 except Exception as e:
-                    logger.error(f"Ошибка загрузки изображения max_performance.png: {e}", exc_info=True)
+                    # Ошибка загрузки изображения не должна блокировать публикацию
+                    error_msg = str(e)
+                    if "same file name as an existing attachment" in error_msg.lower() or "already exists" in error_msg.lower() or "Cannot add a new attachment with same file name" in error_msg:
+                        logger.debug("Изображение max_performance.png уже существует в Confluence, пропускаем загрузку")
+                    else:
+                        logger.warning(f"Ошибка загрузки изображения max_performance.png (не критично, публикация продолжается): {e}")
             
             # Обновляем данные в БД с новой историей изменений и устанавливаем статус "published"
             update_mnt(db, mnt_id, {
@@ -1542,6 +1673,23 @@ async def handle_edit_form(
             log_action(db, mnt_id, author or "unknown", "published", 
                       f"МНТ обновлен в Confluence. Page ID: {page_id}",
                       {"page_id": page_id, "page_url": result_confluence["url"], "space": confluence_space})
+            
+            # ВЕРСИЯ СОЗДАЕТСЯ ТОЛЬКО ПОСЛЕ УСПЕШНОГО ЗАВЕРШЕНИЯ ВСЕХ ОПЕРАЦИЙ ПУБЛИКАЦИИ
+            # Получаем обновленный документ после публикации для создания версии
+            document_after_publish = get_mnt(db, mnt_id)
+            if document_after_publish:
+                # Создаем версию после успешной публикации
+                create_version_after_save(
+                    db=db,
+                    mnt_id=mnt_id,
+                    document=document_after_publish,
+                    data_json=document_after_publish.get("data_json", {}),
+                    author=author,
+                    status="published",
+                    confluence_page_id=page_id,
+                    confluence_page_url=result_confluence["url"],
+                    last_publish_at=datetime.now()
+                )
         except Exception as e:
             error_msg = str(e)
             set_error_status(db, mnt_id, error_msg)
@@ -2163,6 +2311,189 @@ async def log_js_error(request: Request):
     except Exception as e:
         logger.exception(f"Ошибка при логировании JS ошибки: {e}")
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+@app.post("/api/upload-terminology-image")
+
+
+# ==================== Version History Routes ====================
+
+@app.get("/mnt/{mnt_id}/versions", response_class=HTMLResponse)
+async def versions_page(
+    request: Request,
+    mnt_id: int,
+    page: int = Query(1, ge=1),
+    db: Session = Depends(get_db)
+):
+    """Страница истории версий МНТ"""
+    document = get_mnt(db, mnt_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="МНТ не найден")
+    
+    # Получаем версии с пагинацией (10 на страницу)
+    per_page = 10
+    skip = (page - 1) * per_page
+    versions, total = get_document_versions(db, mnt_id, skip=skip, limit=per_page)
+    
+    # Получаем все версии для выпадающего списка сравнения (без пагинации)
+    all_versions, _ = get_document_versions(db, mnt_id, skip=0, limit=1000)
+    
+    total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+    
+    return templates.TemplateResponse("versions.html", {
+        "request": request,
+        "document": document,
+        "versions": versions,
+        "all_versions": all_versions,  # Все версии для выпадающего списка
+        "total": total,
+        "current_page": page,
+        "per_page": per_page,
+        "total_pages": total_pages,
+        "has_prev": page > 1,
+        "has_next": page < total_pages
+    })
+
+
+@app.get("/mnt/{mnt_id}/compare", response_class=HTMLResponse)
+async def compare_versions_direct(
+    request: Request,
+    mnt_id: int,
+    version1_id: str = Query(...),
+    version2_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Прямое сравнение двух версий МНТ (через форму выбора)"""
+    document = get_mnt(db, mnt_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="МНТ не найден")
+    
+    # Получаем первую версию
+    try:
+        version1_id_int = int(version1_id)
+        version1 = get_document_version(db, version1_id_int)
+        if not version1:
+            raise HTTPException(status_code=404, detail="Первая версия не найдена")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Неверный ID первой версии")
+    
+    # Определяем вторую версию для сравнения
+    compare_with_current = False
+    if not version2_id:
+        raise HTTPException(status_code=400, detail="Необходимо выбрать вторую версию для сравнения")
+    
+    # Сравниваем с другой сохраненной версией
+    try:
+        version2_id_int = int(version2_id)
+        version2 = get_document_version(db, version2_id_int)
+        if not version2:
+            raise HTTPException(status_code=404, detail="Вторая версия не найдена")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Неверный ID второй версии")
+    
+    # Выполняем сравнение
+    diff_result = compare_versions(version1, version2)
+    
+    return templates.TemplateResponse("version_compare.html", {
+        "request": request,
+        "document": document,
+        "version1": version1,
+        "version2": version2,
+        "diff_result": diff_result,
+        "compare_with_current": compare_with_current
+    })
+
+
+@app.get("/mnt/{mnt_id}/versions/{version_id}/compare", response_class=HTMLResponse)
+async def compare_version_page(
+    request: Request,
+    mnt_id: int,
+    version_id: int,
+    compare_with_current: bool = Query(False),
+    compare_with_version_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Страница сравнения версий МНТ"""
+    document = get_mnt(db, mnt_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="МНТ не найден")
+    
+    version1 = get_document_version(db, version_id)
+    if not version1:
+        raise HTTPException(status_code=404, detail="Версия не найдена")
+    
+    # Определяем вторую версию для сравнения
+    if compare_with_current:
+        # Сравниваем с текущим состоянием
+        version2 = document
+    elif compare_with_version_id:
+        # Сравниваем с другой версией
+        version2 = get_document_version(db, compare_with_version_id)
+        if not version2:
+            raise HTTPException(status_code=404, detail="Вторая версия не найдена")
+    else:
+        # По умолчанию сравниваем с текущим состоянием
+        version2 = document
+        compare_with_current = True
+    
+    # Выполняем сравнение
+    diff_result = compare_versions(version1, version2)
+    
+    return templates.TemplateResponse("version_compare.html", {
+        "request": request,
+        "document": document,
+        "version1": version1,
+        "version2": version2,
+        "diff_result": diff_result,
+        "compare_with_current": compare_with_current
+    })
+
+
+@app.post("/mnt/{mnt_id}/versions/{version_id}/restore", response_class=RedirectResponse)
+async def restore_version(
+    request: Request,
+    mnt_id: int,
+    version_id: int,
+    db: Session = Depends(get_db)
+):
+    """Восстановление версии МНТ"""
+    document = get_mnt(db, mnt_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="МНТ не найден")
+    
+    version = get_document_version(db, version_id)
+    if not version:
+        raise HTTPException(status_code=404, detail="Версия не найдена")
+    
+    # Восстанавливаем данные из версии (без изменения таблицы "История изменений")
+    restored_data = {
+        "title": version["title"],
+        "project": version["project"],
+        "author": version["author"],
+        **version["data_json"]
+    }
+    
+    # НЕ добавляем запись в таблицу "История изменений" при восстановлении
+    # Пользователь может вручную добавить запись, если необходимо
+    
+    # Обновляем МНТ восстановленными данными
+    update_mnt(
+        db, mnt_id,
+        restored_data,
+        document.get("confluence_space", ""),
+        document.get("confluence_parent_id"),
+        status="draft"  # Восстановленная версия всегда становится черновиком
+    )
+    
+    # Логируем восстановление
+    log_action(
+        db, mnt_id,
+        version.get("created_by", "unknown"),
+        "version_restored",
+        f"Восстановлена версия {version['version_number']}",
+        {"version_id": version_id, "version_number": version["version_number"]}
+    )
+    
+    return RedirectResponse(url=f"/mnt/{mnt_id}/edit?success=version_restored", status_code=303)
+
 
 @app.post("/api/upload-terminology-image")
 async def upload_terminology_image(

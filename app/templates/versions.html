@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}История версий МНТ - МНТ Generator{% endblock %}
+
+{% block breadcrumbs %}
+    <nav aria-label="breadcrumb" class="bg-light border-bottom py-2">
+        <div class="container-fluid">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/">Главная</a></li>
+                <li class="breadcrumb-item"><a href="/mnt/list">Список МНТ</a></li>
+                <li class="breadcrumb-item"><a href="/mnt/{{ document.id }}/edit">Редактировать МНТ</a></li>
+                <li class="breadcrumb-item active">История версий</li>
+            </ol>
+        </div>
+    </nav>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>История версий МНТ</h1>
+        <a href="/mnt/{{ document.id }}/edit" class="btn btn-secondary">← Назад к редактированию</a>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Информация о документе</h5>
+        </div>
+        <div class="card-body">
+            <p><strong>Название:</strong> {{ document.title }}</p>
+            <p><strong>Проект:</strong> {{ document.project }}</p>
+            <p><strong>Автор:</strong> {{ document.author }}</p>
+            <p><strong>Статус:</strong> 
+                {% if document.status == 'published' %}
+                    <span class="badge bg-success">✓ Опубликовано</span>
+                {% elif document.status == 'error' %}
+                    <span class="badge bg-danger">⚠ Ошибка</span>
+                {% else %}
+                    <span class="badge bg-warning text-dark">📝 Черновик</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    
+    {% if versions %}
+    <!-- Форма для выбора двух версий для сравнения -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Сравнение версий</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" action="/mnt/{{ document.id }}/compare" class="row g-3">
+                <div class="col-md-5">
+                    <label for="version1_id" class="form-label">Версия 1 (старая):</label>
+                    <select class="form-select" id="version1_id" name="version1_id" required>
+                        <option value="">Выберите версию...</option>
+                        {% for version in all_versions %}
+                        <option value="{{ version.id }}">Версия {{ version.version_number }} ({{ version.created_at.strftime('%d.%m.%Y %H:%M') if version.created_at else 'N/A' }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label for="version2_id" class="form-label">Версия 2 (новая):</label>
+                    <select class="form-select" id="version2_id" name="version2_id" required>
+                        <option value="">Выберите версию...</option>
+                        {% for version in all_versions %}
+                        <option value="{{ version.id }}">Версия {{ version.version_number }} ({{ version.created_at.strftime('%d.%m.%Y %H:%M') if version.created_at else 'N/A' }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">🔍 Сравнить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Версии документа (всего: {{ total }})</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 10%;">Версия</th>
+                            <th style="width: 15%;">Дата создания</th>
+                            <th style="width: 15%;">Автор</th>
+                            <th style="width: 10%;">Статус</th>
+                            <th style="width: 20%;">Confluence</th>
+                            <th style="width: 30%;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for version in versions %}
+                        <tr>
+                            <td><strong>{{ version.version_number }}</strong></td>
+                            <td>{{ version.created_at.strftime('%d.%m.%Y %H:%M') if version.created_at else 'N/A' }}</td>
+                            <td>{{ version.created_by or version.author }}</td>
+                            <td>
+                                {% if version.status == 'published' %}
+                                    <span class="badge bg-success">Опубликовано</span>
+                                {% elif version.status == 'error' %}
+                                    <span class="badge bg-danger">Ошибка</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Черновик</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if version.confluence_page_url %}
+                                    <a href="{{ version.confluence_page_url }}" target="_blank" class="btn btn-sm btn-link p-0">
+                                        Открыть в Confluence
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button type="button" 
+                                        class="btn btn-outline-warning btn-sm" 
+                                        onclick="confirmRestore({{ version.id }}, '{{ version.version_number }}')"
+                                        title="Восстановить эту версию">
+                                    ↻ Восстановить
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Пагинация -->
+    {% if total_pages > 1 %}
+    <nav aria-label="Пагинация версий" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ current_page - 1 }}">Предыдущая</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">Предыдущая</span>
+            </li>
+            {% endif %}
+            
+            {% for page_num in range(1, total_pages + 1) %}
+                {% if page_num == current_page %}
+                <li class="page-item active">
+                    <span class="page-link">{{ page_num }}</span>
+                </li>
+                {% elif page_num <= 3 or page_num > total_pages - 3 or (page_num >= current_page - 1 and page_num <= current_page + 1) %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a>
+                </li>
+                {% elif page_num == 4 or page_num == total_pages - 3 %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ current_page + 1 }}">Следующая</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">Следующая</span>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    
+    {% else %}
+    <div class="alert alert-info">
+        <strong>ℹ️</strong> История версий пуста. Версии создаются автоматически при сохранении или публикации МНТ.
+    </div>
+    {% endif %}
+</div>
+
+<!-- Форма для восстановления версии -->
+<form id="restoreForm" method="post" action="" style="display: none;">
+</form>
+
+<script>
+function confirmRestore(versionId, versionNumber) {
+    if (confirm(`Вы уверены, что хотите восстановить версию ${versionNumber}?\n\nТекущие несохраненные изменения будут потеряны.`)) {
+        const form = document.getElementById('restoreForm');
+        form.action = `/mnt/{{ document.id }}/versions/${versionId}/restore`;
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

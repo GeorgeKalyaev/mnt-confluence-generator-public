@@ -1,7 +1,7 @@
 """Операции с базой данных"""
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from typing import List, Optional
+from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
 import json
 import re
@@ -575,4 +575,255 @@ def get_mnt_with_deleted(db: Session, mnt_id: int, include_deleted: bool = True)
         "last_publish_at": row[12],
         "last_error": row[13],
         "deleted_at": row[14] if len(row) > 14 else None
+    }
+
+
+# ========== Функции для работы с версиями МНТ ==========
+
+def increment_version_number(version_str: str) -> str:
+    """Инкрементирует номер версии
+    
+    Примеры:
+        "0.1" -> "0.2"
+        "0.9" -> "1.0"
+        "1.5" -> "1.6"
+        "2.0" -> "2.1"
+    """
+    if not version_str:
+        return "0.1"
+    
+    # Парсим версию формата "X.Y"
+    parts = version_str.split(".")
+    if len(parts) != 2:
+        # Если формат неверный, возвращаем "0.1"
+        logger.warning(f"Неверный формат версии: {version_str}, используем 0.1")
+        return "0.1"
+    
+    try:
+        major = int(parts[0])
+        minor = int(parts[1])
+    except ValueError:
+        logger.warning(f"Неверный формат версии: {version_str}, используем 0.1")
+        return "0.1"
+    
+    # Инкрементируем минорную часть
+    minor += 1
+    
+    # Если минорная часть стала 10, увеличиваем мажорную и сбрасываем минорную
+    if minor >= 10:
+        major += 1
+        minor = 0
+    
+    return f"{major}.{minor}"
+
+
+def get_latest_version_from_history(data_json: dict) -> str:
+    """Извлекает последнюю версию из таблицы 'История изменений' (раздел 1)
+    
+    Возвращает максимальную версию по числовому значению.
+    Если версий нет, возвращает None.
+    """
+    history_table = data_json.get("history_changes_table", "")
+    if not history_table:
+        return None
+    
+    # Парсим таблицу: каждая строка - запись, разделитель | между колонками
+    lines = [line.strip() for line in history_table.split('\n') if line.strip()]
+    if not lines:
+        return None
+    
+    # Пропускаем заголовок (первая строка), если есть
+    # Ищем версии в формате "X.Y"
+    versions = []
+    version_pattern = re.compile(r'^(\d+)\.(\d+)$')
+    
+    for line in lines[1:]:  # Пропускаем заголовок
+        parts = [p.strip() for p in line.split('|')]
+        if len(parts) >= 2:  # Дата|Версия|Описание|Автор
+            version_str = parts[1].strip()
+            if version_pattern.match(version_str):
+                versions.append(version_str)
+    
+    if not versions:
+        return None
+    
+    # Сортируем версии по числовому значению
+    def version_key(v):
+        parts = v.split(".")
+        return (int(parts[0]), int(parts[1]))
+    
+    latest_version = max(versions, key=version_key)
+    return latest_version
+
+
+def create_document_version(
+    db: Session,
+    mnt_id: int,
+    version_number: str,
+    title: str,
+    project: str,
+    author: str,
+    data_json: dict,
+    status: str,
+    confluence_space: Optional[str] = None,
+    confluence_parent_id: Optional[int] = None,
+    confluence_page_id: Optional[int] = None,
+    confluence_page_url: Optional[str] = None,
+    last_publish_at: Optional[datetime] = None,
+    created_by: str = None
+) -> dict:
+    """Создание новой версии МНТ документа"""
+    query = text("""
+        INSERT INTO mnt.document_versions (
+            mnt_id, version_number, title, project, author, data_json, status,
+            confluence_space, confluence_parent_id, confluence_page_id, 
+            confluence_page_url, last_publish_at, created_by
+        )
+        VALUES (
+            :mnt_id, :version_number, :title, :project, :author, :data_json, :status,
+            :confluence_space, :confluence_parent_id, :confluence_page_id,
+            :confluence_page_url, :last_publish_at, :created_by
+        )
+        RETURNING id, created_at
+    """)
+    
+    result = db.execute(query, {
+        "mnt_id": mnt_id,
+        "version_number": version_number,
+        "title": title,
+        "project": project,
+        "author": author,
+        "data_json": json.dumps(data_json, ensure_ascii=False),
+        "status": status,
+        "confluence_space": confluence_space,
+        "confluence_parent_id": confluence_parent_id,
+        "confluence_page_id": confluence_page_id,
+        "confluence_page_url": confluence_page_url,
+        "last_publish_at": last_publish_at,
+        "created_by": created_by or author
+    })
+    db.commit()
+    
+    row = result.fetchone()
+    return {
+        "id": row[0],
+        "created_at": row[1]
+    }
+
+
+def get_document_versions(
+    db: Session,
+    mnt_id: int,
+    skip: int = 0,
+    limit: int = 10
+) -> Tuple[List[dict], int]:
+    """Получение списка версий МНТ документа с пагинацией
+    
+    Returns:
+        Tuple[List[dict], int]: (список версий, общее количество)
+    """
+    # Получаем общее количество
+    count_query = text("""
+        SELECT COUNT(*) FROM mnt.document_versions
+        WHERE mnt_id = :mnt_id
+    """)
+    count_result = db.execute(count_query, {"mnt_id": mnt_id})
+    total = count_result.scalar()
+    
+    # Получаем версии с пагинацией
+    query = text("""
+        SELECT id, mnt_id, version_number, title, project, author, data_json,
+               status, confluence_space, confluence_parent_id, confluence_page_id,
+               confluence_page_url, last_publish_at, created_at, created_by
+        FROM mnt.document_versions
+        WHERE mnt_id = :mnt_id
+        ORDER BY created_at DESC
+        LIMIT :limit OFFSET :skip
+    """)
+    
+    result = db.execute(query, {
+        "mnt_id": mnt_id,
+        "limit": limit,
+        "skip": skip
+    })
+    
+    versions = []
+    for row in result.fetchall():
+        # Обрабатываем data_json
+        data_json_value = row[6]
+        if isinstance(data_json_value, dict):
+            data_json_dict = data_json_value
+        elif isinstance(data_json_value, str):
+            try:
+                data_json_dict = json.loads(data_json_value)
+            except:
+                data_json_dict = {}
+        else:
+            data_json_dict = {}
+        
+        versions.append({
+            "id": row[0],
+            "mnt_id": row[1],
+            "version_number": row[2],
+            "title": row[3],
+            "project": row[4],
+            "author": row[5],
+            "data_json": data_json_dict,
+            "status": row[7],
+            "confluence_space": row[8],
+            "confluence_parent_id": row[9],
+            "confluence_page_id": row[10],
+            "confluence_page_url": row[11],
+            "last_publish_at": row[12],
+            "created_at": row[13],
+            "created_by": row[14]
+        })
+    
+    return versions, total
+
+
+def get_document_version(db: Session, version_id: int) -> Optional[dict]:
+    """Получение конкретной версии МНТ по ID версии"""
+    query = text("""
+        SELECT id, mnt_id, version_number, title, project, author, data_json,
+               status, confluence_space, confluence_parent_id, confluence_page_id,
+               confluence_page_url, last_publish_at, created_at, created_by
+        FROM mnt.document_versions
+        WHERE id = :version_id
+    """)
+    
+    result = db.execute(query, {"version_id": version_id})
+    row = result.fetchone()
+    
+    if not row:
+        return None
+    
+    # Обрабатываем data_json
+    data_json_value = row[6]
+    if isinstance(data_json_value, dict):
+        data_json_dict = data_json_value
+    elif isinstance(data_json_value, str):
+        try:
+            data_json_dict = json.loads(data_json_value)
+        except:
+            data_json_dict = {}
+    else:
+        data_json_dict = {}
+    
+    return {
+        "id": row[0],
+        "mnt_id": row[1],
+        "version_number": row[2],
+        "title": row[3],
+        "project": row[4],
+        "author": row[5],
+        "data_json": data_json_dict,
+        "status": row[7],
+        "confluence_space": row[8],
+        "confluence_parent_id": row[9],
+        "confluence_page_id": row[10],
+        "confluence_page_url": row[11],
+        "last_publish_at": row[12],
+        "created_at": row[13],
+        "created_by": row[14]
     }
