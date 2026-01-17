@@ -339,39 +339,6 @@ def set_error_status(db: Session, mnt_id: int, error_message: str) -> bool:
     return result.rowcount > 0
 
 
-def save_version(db: Session, document_id: int, data: dict, changed_by: str = "unknown", change_reason: str = "") -> bool:
-    """Сохранение версии документа в историю изменений"""
-    try:
-        # Получаем последнюю версию
-        max_version_query = text("""
-            SELECT COALESCE(MAX(version_number), 0) 
-            FROM mnt.document_versions 
-            WHERE document_id = :document_id
-        """)
-        result = db.execute(max_version_query, {"document_id": document_id})
-        max_version = result.scalar() or 0
-        new_version = max_version + 1
-        
-        # Сохраняем версию
-        insert_query = text("""
-            INSERT INTO mnt.document_versions (document_id, version_number, data_json, changed_by, change_reason)
-            VALUES (:document_id, :version_number, :data_json, :changed_by, :change_reason)
-        """)
-        
-        db.execute(insert_query, {
-            "document_id": document_id,
-            "version_number": new_version,
-            "data_json": json.dumps(data, ensure_ascii=False),
-            "changed_by": changed_by,
-            "change_reason": change_reason
-        })
-        db.commit()
-        return True
-    except Exception as e:
-        db.rollback()
-        return False
-
-
 # ==================== История действий ====================
 
 def log_action(
@@ -437,40 +404,6 @@ def get_action_history(db: Session, mnt_id: int, limit: int = 100) -> List[dict]
         })
     
     return history
-
-
-def get_versions(db: Session, document_id: int) -> List[dict]:
-    """Получение истории версий документа"""
-    query = text("""
-        SELECT id, version_number, data_json, changed_by, change_reason, created_at
-        FROM mnt.document_versions
-        WHERE document_id = :document_id
-        ORDER BY version_number DESC
-    """)
-    
-    result = db.execute(query, {"document_id": document_id})
-    rows = result.fetchall()
-    
-    versions = []
-    for row in rows:
-        data_json_value = row[2]
-        if isinstance(data_json_value, dict):
-            data_json_dict = data_json_value
-        else:
-            data_json_dict = json.loads(data_json_value) if data_json_value else {}
-        
-        versions.append({
-            "id": row[0],
-            "version_number": row[1],
-            "data_json": data_json_dict,
-            "changed_by": row[3],
-            "change_reason": row[4],
-            "created_at": row[5]
-        })
-    
-    return versions
-
-
 def get_published_version_data(db: Session, document_id: int, last_publish_at) -> Optional[dict]:
     """Получение данных версии, которая была опубликована в Confluence"""
     if not last_publish_at:

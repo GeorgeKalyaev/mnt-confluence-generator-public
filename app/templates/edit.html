@@ -1038,7 +1038,6 @@
         <button type="submit" class="btn btn-primary" onclick="document.getElementById('publish_hidden').value='1';">Сохранить и обновить в Confluence</button>
         <button type="submit" class="btn btn-secondary" onclick="document.getElementById('publish_hidden').value='';">Сохранить (без публикации)</button>
         <a href="/mnt/{{ document.id }}/preview" target="_blank" class="btn btn-outline-info">👁️ Превью</a>
-        <a href="/mnt/{{ document.id }}/versions" class="btn btn-outline-secondary">📚 История версий</a>
         <div class="btn-group">
             <button type="button" class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">📥 Экспорт</button>
             <ul class="dropdown-menu">
@@ -1054,7 +1053,8 @@
 {% block scripts %}
 <script src="/static/js/table-editor.js"></script>
 <script src="/static/js/form-validation.js"></script>
-<script src="/static/js/auto-save.js"></script>
+<!-- Автосохранение отключено -->
+<!-- <script src="/static/js/auto-save.js"></script> -->
 <script src="/static/js/image-preview.js"></script>
 <script src="/static/js/unsaved-changes.js"></script>
 <script>

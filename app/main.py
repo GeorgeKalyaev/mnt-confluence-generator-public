@@ -22,7 +22,7 @@ from app.models import MNTData, MNTDocument, MNTCreateRequest, MNTListResponse, 
 from app.db_operations import (
     create_mnt, get_mnt, update_mnt, list_mnt,
     update_confluence_info, set_error_status,
-    save_version, get_versions, get_published_version_data,
+    get_published_version_data,
     get_tags, create_tag, get_document_tags, set_document_tags,
     log_action, get_action_history,
     soft_delete_mnt, restore_mnt, get_mnt_with_deleted
@@ -1186,6 +1186,9 @@ async def handle_edit_form(
     # Добавляем custom_sections в data
     data["custom_sections"] = custom_sections if custom_sections else None
     
+    # Получаем документ до изменений (нужно сделать это раньше, так как используется ниже)
+    document_before = get_mnt(db, mnt_id)
+    
     # Обрабатываем теги - разбиваем строку через запятую и сохраняем как список в JSON
     # При редактировании: если теги не указаны в форме, сохраняем существующие из БД
     logger.debug(f"EDIT: Получены теги из формы: '{tags}' (тип: {type(tags)})")
@@ -1210,89 +1213,46 @@ async def handle_edit_form(
     title_for_db = project_name
     project_for_db = project_name
     
-    # Сохраняем текущую версию в историю перед обновлением
-    document_before = get_mnt(db, mnt_id)
-    if document_before:
-        save_version(
-            db, 
-            mnt_id, 
-            document_before.get("data_json", {}),
-            changed_by=author or "unknown",
-            change_reason="Автосохранение версии" if not publish else "Версия перед публикацией"
-        )
-    
     # Определяем, нужно ли публиковать
     should_publish = publish and str(publish).strip() and str(publish).strip() != "None"
     logger.debug(f"EDIT: publish parameter = {publish}, should_publish = {should_publish}")
     
-    # Определяем, это автосохранение или явное сохранение пользователем
-    # Автосохранение определяется по отсутствию параметра publish в форме
-    is_autosave = not publish or str(publish).strip() == ""
-    
-    # Автоматически обновляем историю изменений при редактировании (кроме автосохранения)
-    if not is_autosave:
-        # Проверяем, есть ли изменения в данных
-        has_data_changes = False
-        if document_before:
+    # Обновляем историю изменений при редактировании
+    # Проверяем изменения в данных (если еще не проверили выше)
+    if document_before:
+        # Проверка уже выполнена выше при сохранении версии, используем тот же результат
+        if 'has_data_changes' not in locals():
             old_data = document_before.get("data_json", {})
             changes = compare_mnt_data(old_data, data)
             has_data_changes = len(changes) > 0
-        
-        if has_data_changes:
-            # Есть изменения - обновляем историю
-            # Если история изменений передана из формы - используем её
-            # (JavaScript добавляет новую строку только если пользователь ввел автора)
-            form_history = history_changes_table or ""
-            
-            # Получаем старую историю для сравнения
-            old_history = ""
-            if document_before:
-                old_history = document_before.get("data_json", {}).get("history_changes_table", "") or ""
-            
-            # Если история из формы передана - проверяем, добавил ли пользователь новую строку
-            # Новая строка добавляется только если пользователь ввел автора через JavaScript
-            # Сравниваем количество строк: если в форме больше - значит добавилась новая строка
-            
-            if form_history and form_history.strip():
-                form_lines = [l.strip() for l in form_history.strip().split('\n') if l.strip() and '|' in l]
-                old_lines = [l.strip() for l in old_history.strip().split('\n') if l.strip() and '|' in l] if old_history else []
-                
-                # Если в форме больше строк - значит пользователь добавил новую строку
-                if len(form_lines) > len(old_lines):
-                    data["history_changes_table"] = form_history
-                else:
-                    # История не изменилась - используем старую историю (не добавляем новую строку автоматически)
-                    data["history_changes_table"] = old_history or form_history or ""
-            else:
-                # История из формы пуста - используем старую историю (не добавляем новую строку автоматически)
-                data["history_changes_table"] = old_history or ""
-        else:
-            # Изменений нет - не обновляем историю, используем текущую
-            if document_before:
-                data["history_changes_table"] = document_before.get("data_json", {}).get("history_changes_table") or history_changes_table or ""
-            else:
-                data["history_changes_table"] = history_changes_table or ""
     else:
-        # При автосохранении не обновляем историю - используем текущую из документа или формы
-        if document_before:
-            # Берем историю из текущего документа
-            data["history_changes_table"] = document_before.get("data_json", {}).get("history_changes_table") or history_changes_table or ""
+        has_data_changes = False
+    
+    # Обновляем историю изменений
+    form_history = history_changes_table or ""
+    old_history = document_before.get("data_json", {}).get("history_changes_table", "") or "" if document_before else ""
+    
+    if form_history and form_history.strip():
+        form_lines = [l.strip() for l in form_history.strip().split('\n') if l.strip() and '|' in l]
+        old_lines = [l.strip() for l in old_history.strip().split('\n') if l.strip() and '|' in l] if old_history else []
+        
+        # Если в форме больше строк - значит пользователь добавил новую строку
+        if len(form_lines) > len(old_lines):
+            data["history_changes_table"] = form_history
         else:
-            # Если документа нет (не должно быть при редактировании), используем из формы
-            data["history_changes_table"] = history_changes_table or ""
+            # История не изменилась - используем старую историю или из формы
+            data["history_changes_table"] = old_history or form_history or ""
+    else:
+        # История из формы пуста - используем старую историю
+        data["history_changes_table"] = old_history or ""
     
     # Получаем текущий статус МНТ
-    current_status = document_before.get("status") if document_before else "draft"
+    current_status = document_before.get("status") if document_before else None
     
     # Определяем, какой статус устанавливать
-    # При автосохранении: сохраняем текущий статус (не меняем)
     # При явном сохранении без публикации: устанавливаем "draft"
     # При публикации: статус установим после успешной публикации (None = не менять сейчас)
-    if is_autosave:
-        # Автосохранение - не меняем статус
-        status_to_set = None
-        logger.debug(f"EDIT: Автосохранение - сохраняем текущий статус '{current_status}'")
-    elif should_publish:
+    if should_publish:
         # Публикация - статус установим после успешной публикации
         status_to_set = None
         logger.debug(f"EDIT: Публикация - статус будет установлен после успешной публикации")
@@ -1468,15 +1428,6 @@ async def handle_edit_form(
                 status="published"
             )
             
-            # Сохраняем версию ПОСЛЕ успешной публикации, чтобы она соответствовала опубликованным данным
-            save_version(
-                db,
-                mnt_id,
-                data,  # Данные, которые были опубликованы
-                changed_by=author or "unknown",
-                change_reason="Версия после успешной публикации в Confluence"
-            )
-            
             logger.info(f"EDIT: Успешно опубликовано в Confluence. МНТ ID: {mnt_id}, Page ID: {page_id}")
             # Логируем успешную публикацию
             log_action(db, mnt_id, author or "unknown", "published", 
@@ -1588,137 +1539,6 @@ async def export_mnt(mnt_id: int, format: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Ошибка экспорта: {str(e)}")
 
 
-@app.get("/mnt/{mnt_id}/versions", response_class=HTMLResponse)
-async def view_versions(request: Request, mnt_id: int, db: Session = Depends(get_db)):
-    """Просмотр истории версий МНТ"""
-    document = get_mnt(db, mnt_id)
-    if not document:
-        raise HTTPException(status_code=404, detail="МНТ не найден")
-    
-    versions = get_versions(db, mnt_id)
-    
-    return templates.TemplateResponse("versions.html", {
-        "request": request,
-        "document": document,
-        "versions": versions or []
-    })
-
-
-@app.get("/mnt/{mnt_id}/history", response_class=HTMLResponse)
-async def view_action_history(request: Request, mnt_id: int, db: Session = Depends(get_db)):
-    """Просмотр истории действий для МНТ"""
-    document = get_mnt(db, mnt_id)
-    if not document:
-        raise HTTPException(status_code=404, detail="МНТ не найден")
-    
-    history = get_action_history(db, mnt_id, limit=200)
-    
-    # Преобразуем типы действий в читаемые названия
-    action_names = {
-        "created": "Создание",
-        "updated": "Обновление",
-        "published": "Публикация",
-        "publish_failed": "Ошибка публикации",
-        "status_changed": "Изменение статуса",
-        "deleted": "Удаление"
-    }
-    
-    for item in history:
-        item["action_name"] = action_names.get(item["action_type"], item["action_type"])
-    
-    return templates.TemplateResponse("action_history.html", {
-        "request": request,
-        "document": document,
-        "history": history
-    })
-
-
-@app.get("/mnt/{mnt_id}/version/{version_id}/preview", response_class=HTMLResponse)
-async def preview_version(request: Request, mnt_id: int, version_id: int, db: Session = Depends(get_db)):
-    """Предпросмотр версии МНТ"""
-    document = get_mnt(db, mnt_id)
-    if not document:
-        raise HTTPException(status_code=404, detail="МНТ не найден")
-    
-    versions = get_versions(db, mnt_id)
-    version = next((v for v in versions if v["id"] == version_id), None)
-    
-    if not version:
-        raise HTTPException(status_code=404, detail="Версия не найдена")
-    
-    # Генерируем HTML превью из данных версии
-    try:
-        from app.render import render_mnt_to_confluence_storage
-        from app.export import export_to_html
-        
-        html_content = export_to_html(version["data_json"])
-        
-        return templates.TemplateResponse("version_preview.html", {
-            "request": request,
-            "document": document,
-            "version": version,
-            "preview_content": html_content
-        })
-    except Exception as e:
-        logger.error(f"Ошибка создания превью версии: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Ошибка создания превью: {str(e)}")
-
-
-@app.get("/mnt/{mnt_id}/versions/compare", response_class=HTMLResponse)
-async def compare_versions(
-    request: Request, 
-    mnt_id: int, 
-    v1: int = Query(...),
-    v2: int = Query(...),
-    db: Session = Depends(get_db)
-):
-    """Сравнение двух версий МНТ"""
-    document = get_mnt(db, mnt_id)
-    if not document:
-        raise HTTPException(status_code=404, detail="МНТ не найден")
-    
-    versions = get_versions(db, mnt_id)
-    version1 = next((v for v in versions if v["id"] == v1), None)
-    version2 = next((v for v in versions if v["id"] == v2), None)
-    
-    if not version1 or not version2:
-        raise HTTPException(status_code=404, detail="Одна из версий не найдена")
-    
-    # Сравниваем версии
-    changes = compare_mnt_data(version1["data_json"], version2["data_json"])
-    
-    return templates.TemplateResponse("version_compare.html", {
-        "request": request,
-        "document": document,
-        "version1": version1,
-        "version2": version2,
-        "changes": changes
-    })
-
-
-@app.get("/mnt/{mnt_id}/version/{version_id}/restore")
-async def restore_version(request: Request, mnt_id: int, version_id: int, db: Session = Depends(get_db)):
-    """Восстановление версии МНТ"""
-    versions = get_versions(db, mnt_id)
-    version = next((v for v in versions if v["id"] == version_id), None)
-    
-    if not version:
-        raise HTTPException(status_code=404, detail="Версия не найдена")
-    
-    # Восстанавливаем данные версии
-    document = get_mnt(db, mnt_id)
-    restored_data = version["data_json"]
-    
-    update_mnt(db, mnt_id, {
-        "title": document.get("title", ""),
-        "project": document.get("project", ""),
-        "author": document.get("author", ""),
-        **restored_data
-    }, document.get("confluence_space", ""), document.get("confluence_parent_id"))
-    
-    log_mnt_operation("Восстановление версии", mnt_id, details={"version_id": version_id})
-    
-    return RedirectResponse(url=f"/mnt/{mnt_id}/edit", status_code=303)
 
 
 @app.get("/api/tags")

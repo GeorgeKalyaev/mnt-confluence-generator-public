@@ -133,8 +133,6 @@
                 <th>Название</th>
                 <th>Проект</th>
                 <th>Автор</th>
-                <th>Дата создания</th>
-                <th>Последнее изменение</th>
                 <th>Статус</th>
                 <th>Confluence</th>
                 <th>Действия</th>
@@ -168,8 +166,6 @@
                 </td>
                 <td>{{ doc.project }}</td>
                 <td>{{ doc.author }}</td>
-                <td>{{ doc.created_at.strftime('%d.%m.%Y %H:%M') if doc.created_at else '-' }}</td>
-                <td>{{ doc.updated_at.strftime('%d.%m.%Y %H:%M') if doc.updated_at else '-' }}</td>
                 <td>
                     {% if doc.status == 'published' %}
                         <span class="badge bg-success">✓ Опубликовано</span>
@@ -210,7 +206,6 @@
                 <td>
                     <div class="btn-group" role="group">
                         <a href="/mnt/{{ doc.id }}/edit" class="btn btn-sm btn-outline-primary">Редактировать</a>
-                        <a href="/mnt/{{ doc.id }}/history" class="btn btn-sm btn-outline-secondary" title="История действий">📋</a>
                         <form method="post" action="/mnt/{{ doc.id }}/delete" style="display: inline;" 
                               onsubmit="return confirm('Вы уверены, что хотите удалить этот МНТ?\\n\\nСтраница в Confluence будет удалена, но МНТ можно будет восстановить в течение 30 дней из корзины.');">
                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить МНТ">🗑️</button>
