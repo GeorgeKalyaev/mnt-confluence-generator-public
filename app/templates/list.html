@@ -16,6 +16,8 @@
     <strong>✓ Успешно!</strong> МНТ обновлен и опубликован в Confluence.
     {% elif success_message == 'deleted' %}
     <strong>✓ Успешно!</strong> МНТ удален и перемещен в корзину. Страница в Confluence также удалена. Вы можете восстановить МНТ в течение 30 дней из корзины.
+    {% elif success_message == 'duplicated' %}
+    <strong>✓ Успешно!</strong> МНТ успешно продублирован. Копия создана как черновик с названием «(копия)».
     {% else %}
     <strong>✓ Успешно!</strong> {{ success_message }}
     {% endif %}
@@ -205,10 +207,18 @@
                 </td>
                 <td>
                     <div class="btn-group" role="group">
-                        <a href="/mnt/{{ doc.id }}/edit" class="btn btn-sm btn-outline-primary">Редактировать</a>
+                        <a href="/mnt/{{ doc.id }}/edit" class="btn btn-sm btn-outline-primary">✏️ Редактировать</a>
+                        <form method="post" action="/mnt/{{ doc.id }}/duplicate" style="display: inline;" 
+                              onsubmit="return confirm('Создать копию этого МНТ?\\n\\nКопия будет создана как черновик с названием \"{{ doc.title }} (копия)\".\\n\\nИстория изменений и лист согласования начнутся заново.');">
+                            <button type="submit" class="btn btn-sm btn-outline-info" title="Создать копию МНТ">
+                                🔄 Дублировать
+                            </button>
+                        </form>
                         <form method="post" action="/mnt/{{ doc.id }}/delete" style="display: inline;" 
                               onsubmit="return confirm('Вы уверены, что хотите удалить этот МНТ?\\n\\nСтраница в Confluence будет удалена, но МНТ можно будет восстановить в течение 30 дней из корзины.');">
-                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить МНТ">🗑️</button>
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить МНТ">
+                                ❌ Удалить
+                            </button>
                         </form>
                     </div>
                 </td>
