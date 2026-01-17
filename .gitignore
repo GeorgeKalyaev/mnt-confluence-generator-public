@@ -10,10 +10,8 @@ ENV/
 .venv
 
 # Environment
-.env
 .env.local
-.env.*
-!.env.example
+.env.*.local
 
 # IDE
 .vscode/
