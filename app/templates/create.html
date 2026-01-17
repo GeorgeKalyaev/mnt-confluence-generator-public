@@ -3795,4 +3795,380 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }); // конец DOMContentLoaded
 </script>
+
+<!-- Drag & Drop для таблиц -->
+<script src="{{ url_for('static', path='js/drag-drop-tables.js') }}"></script>
+<!-- Автодополнение для полей -->
+<script src="{{ url_for('static', path='js/autocomplete.js') }}"></script>
+
+<!-- Инициализация Drag & Drop и автодополнения -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ========== Drag & Drop для всех таблиц ==========
+    
+    // Функция для инициализации drag & drop для таблицы
+    function initDragDropForTable(tableId, tbodyId, updateFunction, addButtonId) {
+        const tbody = document.getElementById(tbodyId);
+        if (!tbody) return null;
+        
+        const dragDrop = new TableDragDrop(
+            tableId,
+            tbodyId,
+            function() {
+                if (typeof updateFunction === 'function') {
+                    updateFunction();
+                }
+            }
+        );
+        
+        // Обновляем drag & drop после добавления новых строк
+        if (addButtonId) {
+            const addBtn = document.getElementById(addButtonId);
+            if (addBtn) {
+                addBtn.addEventListener('click', function() {
+                    setTimeout(() => {
+                        if (dragDrop) dragDrop.refresh();
+                    }, 100);
+                });
+            }
+        }
+        
+        return dragDrop;
+    }
+    
+    // Инициализируем drag & drop для всех таблиц
+    const dragDropInstances = {};
+    
+    // 1. История изменений
+    dragDropInstances.historyChanges = initDragDropForTable(
+        'history_changes_visual_table',
+        'history_changes_tbody',
+        function() {
+            if (typeof updateHistoryChangesHiddenField === 'function') {
+                updateHistoryChangesHiddenField();
+            }
+        },
+        'add_history_row_btn'
+    );
+    
+    // 2. Лист согласования
+    dragDropInstances.approvalList = initDragDropForTable(
+        'approval_list_visual_table',
+        'approval_list_tbody',
+        function() {
+            if (typeof updateApprovalHiddenField === 'function') {
+                updateApprovalHiddenField();
+            }
+        },
+        'add_approval_row_btn'
+    );
+    
+    // 3. Сокращения
+    dragDropInstances.abbreviations = initDragDropForTable(
+        'abbreviations_visual_table',
+        'abbreviations_tbody',
+        function() {
+            if (typeof updateAbbreviationHiddenField === 'function') {
+                updateAbbreviationHiddenField();
+            }
+        },
+        'add_abbreviation_row_btn'
+    );
+    
+    // 4. Терминология
+    dragDropInstances.terminology = initDragDropForTable(
+        'terminology_visual_table',
+        'terminology_tbody',
+        function() {
+            if (typeof updateTerminologyHiddenField === 'function') {
+                updateTerminologyHiddenField();
+            }
+        },
+        'add_terminology_row_btn'
+    );
+    
+    // 5. Риски
+    dragDropInstances.risks = initDragDropForTable(
+        'risks_visual_table',
+        'risks_tbody',
+        function() {
+            if (typeof updateRiskHiddenField === 'function') {
+                updateRiskHiddenField();
+            }
+        },
+        'add_risk_row_btn'
+    );
+    
+    // 6. Сравнение конфигураций
+    dragDropInstances.standComparison = initDragDropForTable(
+        'stand_comparison_visual_table',
+        'stand_comparison_tbody',
+        function() {
+            if (typeof updateStandComparisonHiddenField === 'function') {
+                updateStandComparisonHiddenField();
+            }
+        },
+        'add_stand_comparison_row_btn'
+    );
+    
+    // 7. Планируемые тесты
+    dragDropInstances.plannedTests = initDragDropForTable(
+        'planned_tests_visual_table',
+        'planned_tests_tbody',
+        function() {
+            if (typeof updatePlannedTestHiddenField === 'function') {
+                updatePlannedTestHiddenField();
+            }
+        },
+        'add_planned_test_row_btn'
+    );
+    
+    // 8. Наполнение БД
+    dragDropInstances.databasePreparation = initDragDropForTable(
+        'database_preparation_visual_table',
+        'database_preparation_tbody',
+        function() {
+            if (typeof updateDatabasePreparationHiddenField === 'function') {
+                updateDatabasePreparationHiddenField();
+            }
+        },
+        'add_database_preparation_row_btn'
+    );
+    
+    // 9. Профили нагрузки
+    dragDropInstances.loadProfiles = initDragDropForTable(
+        'load_profiles_visual_table',
+        'load_profiles_tbody',
+        function() {
+            if (typeof updateLoadProfilesHiddenField === 'function') {
+                updateLoadProfilesHiddenField();
+            }
+        },
+        'add_load_profiles_row_btn'
+    );
+    
+    // 10. Сценарии использования
+    dragDropInstances.useScenarios = initDragDropForTable(
+        'use_scenarios_visual_table',
+        'use_scenarios_tbody',
+        function() {
+            if (typeof updateUseScenariosHiddenField === 'function') {
+                updateUseScenariosHiddenField();
+            }
+        },
+        'add_use_scenarios_row_btn'
+    );
+    
+    // 11. Средства мониторинга
+    dragDropInstances.monitoringTools = initDragDropForTable(
+        'monitoring_tools_visual_table',
+        'monitoring_tools_tbody',
+        function() {
+            if (typeof updateMonitoringToolsHiddenField === 'function') {
+                updateMonitoringToolsHiddenField();
+            }
+        },
+        'add_monitoring_tools_row_btn'
+    );
+    
+    // 12. Системные ресурсы
+    dragDropInstances.systemResources = initDragDropForTable(
+        'system_resources_visual_table',
+        'system_resources_tbody',
+        function() {
+            if (typeof updateSystemResourcesHiddenField === 'function') {
+                updateSystemResourcesHiddenField();
+            }
+        },
+        'add_system_resources_row_btn'
+    );
+    
+    // 13. Бизнес-метрики
+    dragDropInstances.businessMetrics = initDragDropForTable(
+        'business_metrics_visual_table',
+        'business_metrics_tbody',
+        function() {
+            if (typeof updateBusinessMetricsHiddenField === 'function') {
+                updateBusinessMetricsHiddenField();
+            }
+        },
+        'add_business_metrics_row_btn'
+    );
+    
+        // 14. Материалы, подлежащие сдаче
+        dragDropInstances.deliverables = initDragDropForTable(
+            'deliverables_visual_table',
+            'deliverables_tbody',
+            function() {
+                if (typeof updateDeliverablesHiddenField === 'function') {
+                    updateDeliverablesHiddenField();
+                }
+            },
+            'add_deliverables_row_btn'
+        );
+    
+    // 15. Рабочие документы
+    dragDropInstances.deliverablesWorkingDocs = initDragDropForTable(
+        'deliverables_working_docs_visual_table',
+        'deliverables_working_docs_tbody',
+        function() {
+            if (typeof updateDeliverablesWorkingDocsHiddenField === 'function') {
+                updateDeliverablesWorkingDocsHiddenField();
+            }
+        },
+        'add_deliverables_working_docs_row_btn'
+    );
+    
+    // 16. Контакты
+    dragDropInstances.contacts = initDragDropForTable(
+        'contacts_visual_table',
+        'contacts_tbody',
+        function() {
+            if (typeof updateContactsHiddenField === 'function') {
+                updateContactsHiddenField();
+            }
+        },
+        'add_contacts_row_btn'
+    );
+    
+    // ========== Автодополнение для полей ==========
+    
+    // Автодополнение для поля "Проект"
+    const projectInput = document.getElementById('project');
+    if (projectInput) {
+        initAutocomplete(projectInput, {
+            source: async () => {
+                try {
+                    const response = await fetch('/api/autocomplete/projects');
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error('Ошибка загрузки проектов:', error);
+                    return [];
+                }
+            },
+            minLength: 1,
+            fetchOnFocus: true,
+            maxItems: 10
+        });
+    }
+    
+    // Автодополнение для поля "Автор"
+    const authorInput = document.getElementById('author');
+    if (authorInput) {
+        initAutocomplete(authorInput, {
+            source: async () => {
+                try {
+                    const response = await fetch('/api/autocomplete/authors');
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error('Ошибка загрузки авторов:', error);
+                    return [];
+                }
+            },
+            minLength: 1,
+            fetchOnFocus: true,
+            maxItems: 10
+        });
+    }
+    
+    // Автодополнение для поля "Теги" (с поддержкой множественного ввода через запятую)
+    const tagsInput = document.getElementById('tags');
+    if (tagsInput) {
+        initAutocomplete(tagsInput, {
+            source: async () => {
+                try {
+                    const response = await fetch('/api/autocomplete/tags');
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error('Ошибка загрузки тегов:', error);
+                    return [];
+                }
+            },
+            minLength: 1,
+            maxItems: 10,
+            onSelect: (item, input) => {
+                const currentValue = input.value.trim();
+                const newTag = typeof item === 'string' ? item : item.value;
+                
+                // Разбиваем текущее значение на теги
+                const parts = currentValue.split(',').map(s => s.trim()).filter(s => s);
+                
+                // Добавляем новый тег если его еще нет
+                if (!parts.includes(newTag)) {
+                    parts.push(newTag);
+                }
+                
+                // Объединяем обратно
+                input.value = parts.join(', ');
+                
+                // Фокусируемся в конце для продолжения ввода
+                setTimeout(() => {
+                    input.focus();
+                    input.setSelectionRange(input.value.length, input.value.length);
+                }, 10);
+            }
+        });
+    }
+});
+</script>
+
+<!-- CSS стили для Drag & Drop -->
+<style>
+.draggable-row {
+    transition: background-color 0.2s;
+}
+
+.draggable-row.dragging {
+    opacity: 0.5;
+    background-color: #f0f0f0;
+}
+
+.draggable-row.drag-over {
+    background-color: #e3f2fd;
+}
+
+.draggable-row.drag-over-top {
+    border-top: 3px solid #2196f3;
+}
+
+.draggable-row.drag-over-bottom {
+    border-bottom: 3px solid #2196f3;
+}
+
+.draggable-row.drag-enter {
+    background-color: #bbdefb;
+}
+
+.drag-handle {
+    cursor: move !important;
+    user-select: none;
+    color: #666;
+    font-size: 1.2em;
+    transition: color 0.2s;
+}
+
+.drag-handle:hover {
+    color: #2196f3;
+}
+
+.drag-handle:active {
+    cursor: grabbing !important;
+}
+
+.drag-handle-floating {
+    opacity: 0.5;
+}
+
+.draggable-row:hover .drag-handle-floating {
+    opacity: 1;
+}
+
+/* Убеждаемся, что колонка действий имеет достаточно места */
+td:has(.drag-handle) {
+    white-space: nowrap;
+}
+</style>
 {% endblock %}
