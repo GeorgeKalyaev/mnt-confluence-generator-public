@@ -20,6 +20,16 @@ class Settings(BaseSettings):
     confluence_username: Optional[str] = None
     confluence_password: Optional[str] = None
     
+    # Logging
+    log_level: str = "INFO"  # TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL
+    log_format: str = "text"  # "text" или "json" (для ELK)
+    log_service_name: str = "mnt-confluence-generator"
+    log_environment: str = "development"  # development, staging, production
+    log_file_max_size_mb: int = 100  # Максимальный размер лог-файла в МБ
+    log_file_backup_count: int = 5  # Количество резервных копий файлов
+    log_enable_file: bool = True  # Логирование в файл
+    log_enable_console: bool = True  # Логирование в консоль
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

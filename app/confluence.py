@@ -392,3 +392,14 @@ class ConfluenceClient:
 def get_confluence_client() -> ConfluenceClient:
     """Получение клиента Confluence"""
     return ConfluenceClient()
+
+
+def is_confluence_configured() -> bool:
+    """Проверка наличия настроек Confluence"""
+    try:
+        # Проверяем наличие credentials без создания клиента
+        has_cloud_creds = bool(settings.confluence_email and settings.confluence_api_token)
+        has_server_creds = bool(settings.confluence_username and settings.confluence_password)
+        return has_cloud_creds or has_server_creds
+    except Exception:
+        return False

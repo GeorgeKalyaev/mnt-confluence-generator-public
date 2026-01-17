@@ -27,7 +27,7 @@ from app.db_operations import (
     soft_delete_mnt, restore_mnt, get_mnt_with_deleted
 )
 from app.diff_tracker import compare_mnt_data
-from app.confluence import get_confluence_client, ConfluenceClient
+from app.confluence import get_confluence_client, ConfluenceClient, is_confluence_configured
 from app.render import render_mnt_to_confluence_storage
 from app.defaults import get_default_mnt_data
 from app.logger import (
@@ -91,18 +91,38 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 }
             )
         
+        # Пытаемся получить размер запроса из заголовков
+        request_size_bytes = None
+        content_length = request.headers.get('content-length')
+        if content_length:
+            try:
+                request_size_bytes = int(content_length)
+            except (ValueError, TypeError):
+                pass
+        
         try:
             response = await call_next(request)
             duration_ms = (time.time() - start_time) * 1000
             
-            # Логируем ответ
+            # Пытаемся определить размер ответа из заголовков
+            response_size_bytes = None
+            content_length = response.headers.get('content-length')
+            if content_length:
+                try:
+                    response_size_bytes = int(content_length)
+                except (ValueError, TypeError):
+                    pass
+            
+            # Логируем ответ с метриками
             log_request(
                 method=method,
                 path=path,
                 status_code=response.status_code,
                 request_id=request_id,
                 user_ip=user_ip,
-                duration_ms=duration_ms
+                duration_ms=duration_ms,
+                request_size_bytes=request_size_bytes,
+                response_size_bytes=response_size_bytes
             )
             
             return response
@@ -219,6 +239,18 @@ async def list_page(
     
     total_pages = (total + per_page - 1) // per_page if total > 0 else 1
     
+    # Преобразуем коды ошибок в понятные сообщения
+    error_messages = {
+        "confluence_not_configured": "Не удалось удалить МНТ: Confluence недоступен или не настроен. Проверьте настройки в файле .env. Удаление заблокировано, чтобы не допустить потери данных в Confluence.",
+        "already_deleted": "МНТ уже удален.",
+        "delete_failed": "Не удалось удалить МНТ. Попробуйте позже.",
+        "not_deleted": "МНТ не был удален."
+    }
+    
+    error_message = None
+    if error:
+        error_message = error_messages.get(error, error)
+    
     return templates.TemplateResponse("list.html", {
         "request": request,
         "documents": documents,
@@ -236,7 +268,7 @@ async def list_page(
         "has_prev": page > 1,
         "has_next": page < total_pages,
         "success_message": success,
-        "error_message": error
+        "error_message": error_message
     })
 
 
@@ -1706,15 +1738,36 @@ async def delete_mnt(mnt_id: int, db: Session = Depends(get_db)):
         # Уже удален
         return RedirectResponse(url="/mnt/list?error=already_deleted", status_code=303)
     
+    # Проверяем доступность Confluence, если есть опубликованная страница
+    confluence_page_id = document.get("confluence_page_id")
+    if confluence_page_id:
+        if not is_confluence_configured():
+            # Confluence недоступен, но есть опубликованная страница - блокируем удаление
+            logger.warning(
+                f"Попытка удаления МНТ {mnt_id} с confluence_page_id={confluence_page_id}, "
+                f"но Confluence credentials не настроены. Удаление заблокировано."
+            )
+            return RedirectResponse(
+                url="/mnt/list?error=confluence_not_configured", 
+                status_code=303
+            )
+    
     try:
         # Удаляем страницу из Confluence, если она была опубликована
-        if document.get("confluence_page_id"):
+        if confluence_page_id:
             try:
                 confluence_client = get_confluence_client()
-                await confluence_client.delete_page(document["confluence_page_id"])
-                logger.info(f"Страница {document['confluence_page_id']} удалена из Confluence для МНТ {mnt_id}")
+                await confluence_client.delete_page(confluence_page_id)
+                logger.info(f"Страница {confluence_page_id} удалена из Confluence для МНТ {mnt_id}")
+            except ValueError as e:
+                # Confluence credentials not configured (не должно быть, т.к. проверили выше)
+                logger.error(f"Confluence credentials не настроены для удаления МНТ {mnt_id}: {e}")
+                return RedirectResponse(
+                    url="/mnt/list?error=confluence_not_configured", 
+                    status_code=303
+                )
             except Exception as e:
-                # Если страница уже удалена или ошибка - продолжаем soft delete в БД
+                # Если страница уже удалена или другая ошибка - продолжаем soft delete в БД
                 logger.warning(f"Не удалось удалить страницу из Confluence для МНТ {mnt_id}: {e}")
         
         # Мягкое удаление в БД
@@ -1725,8 +1778,8 @@ async def delete_mnt(mnt_id: int, db: Session = Depends(get_db)):
             db, mnt_id, 
             document.get("author", "unknown"), 
             "deleted",
-            f"МНТ удален (soft delete). Страница Confluence {'удалена' if document.get('confluence_page_id') else 'не была опубликована'}",
-            {"confluence_page_id": document.get("confluence_page_id")}
+            f"МНТ удален (soft delete). Страница Confluence {'удалена' if confluence_page_id else 'не была опубликована'}",
+            {"confluence_page_id": confluence_page_id}
         )
         
         return RedirectResponse(url="/mnt/list?success=deleted", status_code=303)

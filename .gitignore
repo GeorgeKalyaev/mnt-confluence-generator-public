@@ -10,7 +10,7 @@ ENV/
 .venv
 
 # Environment
-.env
+# .env - теперь добавляется в git по требованию пользователя
 .env.local
 
 # IDE
