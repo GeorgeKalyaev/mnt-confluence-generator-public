@@ -583,7 +583,7 @@ def render_mnt_to_confluence_storage(
         content_parts.append(render_list_field(data["customer_requirements_list"], ordered=True))
     
     # Раздел 14: Материалы, подлежащие сдаче
-    if data.get("deliverables_intro") or data.get("deliverables_table"):
+    if data.get("deliverables_intro") or data.get("deliverables_table") or data.get("deliverables_working_docs_table"):
         sections.append(("Материалы, подлежащие сдаче", 1))
         content_parts.append('<h1>14 Материалы, подлежащие сдаче</h1>')
         if data.get("deliverables_intro"):
@@ -597,6 +597,27 @@ def render_mnt_to_confluence_storage(
                 caption="Материалы, подлежащие сдаче"
             )
             content_parts.append(table_html)
+        if data.get("deliverables_working_docs_table"):
+            # Обрабатываем вторую таблицу отдельно
+            working_docs_data = data["deliverables_working_docs_table"]
+            lines = [line.strip() for line in working_docs_data.split('\n') if line.strip()]
+            
+            if lines:
+                # Первая строка - заголовок
+                header = lines[0]
+                content_parts.append(f'<p><strong>{escape_xml(header)}</strong></p>')
+                
+                # Остальные строки - таблица
+                if len(lines) > 1:
+                    table_data = '\n'.join(lines[1:])
+                    # Добавляем заголовки столбцов
+                    table_data = 'Документ|Подготавливается в результате деятельности\n' + table_data
+                    table_html, table_num = render_table_from_text(
+                        table_data,
+                        table_num=table_num,
+                        caption=""
+                    )
+                    content_parts.append(table_html)
     
     # Раздел 15: Контакты
     if data.get("contacts_table"):

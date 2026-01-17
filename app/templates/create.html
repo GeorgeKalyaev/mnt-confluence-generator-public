@@ -711,12 +711,60 @@
         <h3>14. Материалы, подлежащие сдаче</h3>
         <div class="mb-3">
             <label for="deliverables_intro" class="form-label">Вводный текст</label>
-            <textarea class="form-control" id="deliverables_intro" name="deliverables_intro" rows="2"></textarea>
+            <textarea class="form-control" id="deliverables_intro" name="deliverables_intro" rows="3">{% if data and data.get('deliverables_intro') %}{{ data.deliverables_intro }}{% else %}При завершении НТ на всех этапах, сдаче Заказчику подлежат материалы, указанные в таблице 14.{% endif %}</textarea>
         </div>
         <div class="mb-3">
             <label for="deliverables_table" class="form-label">Таблица материалов</label>
-            <small class="text-muted d-block mb-2">Формат: Документ|Подготавливается в результате деятельности (каждая строка - отдельная запись)</small>
-            <textarea class="form-control" id="deliverables_table" name="deliverables_table" rows="8">{{ data.deliverables_table if data else '' }}</textarea>
+            <small class="text-muted d-block mb-2">Для добавления новой строки нажмите кнопку "Добавить строку".</small>
+            
+            <!-- Скрытое поле для отправки данных на сервер -->
+            <input type="hidden" id="deliverables_table" name="deliverables_table" value="{{ data.deliverables_table if data else '' }}">
+            
+            <!-- Визуальная таблица с input полями -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="deliverables_visual_table">
+                    <thead>
+                        <tr>
+                            <th style="width: 45%;">Документ <span class="text-danger">*</span></th>
+                            <th style="width: 50%;">Подготавливается в результате деятельности <span class="text-danger">*</span></th>
+                            <th style="width: 5%; text-align: center;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deliverables_tbody">
+                        <!-- Заполняется автоматически через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add_deliverables_row_btn">
+                <i class="bi bi-plus-circle"></i> Добавить строку
+            </button>
+        </div>
+        
+        <div class="mb-3 mt-4">
+            <label class="form-label"><strong>Рабочие документы (предоставляются только в электронном виде):</strong></label>
+            <small class="text-muted d-block mb-2">Для добавления новой строки нажмите кнопку "Добавить строку".</small>
+            
+            <!-- Скрытое поле для отправки данных на сервер -->
+            <input type="hidden" id="deliverables_working_docs_table" name="deliverables_working_docs_table" value="{{ data.deliverables_working_docs_table if data else '' }}">
+            
+            <!-- Визуальная таблица с input полями -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="deliverables_working_docs_visual_table">
+                    <thead>
+                        <tr>
+                            <th style="width: 45%;">Документ <span class="text-danger">*</span></th>
+                            <th style="width: 50%;">Подготавливается в результате деятельности <span class="text-danger">*</span></th>
+                            <th style="width: 5%; text-align: center;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deliverables_working_docs_tbody">
+                        <!-- Заполняется автоматически через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add_deliverables_working_docs_row_btn">
+                <i class="bi bi-plus-circle"></i> Добавить строку
+            </button>
         </div>
     </div>
 
@@ -725,8 +773,31 @@
         <h3>15. Контакты</h3>
         <div class="mb-3">
             <label for="contacts_table" class="form-label">Таблица контактов ответственных лиц</label>
-            <small class="text-muted d-block mb-2">Формат: п/п|ФИО|Сфера ответственности|Контакты (каждая строка - отдельная запись)</small>
-            <textarea class="form-control" id="contacts_table" name="contacts_table" rows="6">{{ data.contacts_table if data else '' }}</textarea>
+            <small class="text-muted d-block mb-2">Для добавления новой строки нажмите кнопку "Добавить строку".</small>
+            
+            <!-- Скрытое поле для отправки данных на сервер -->
+            <input type="hidden" id="contacts_table" name="contacts_table" value="{{ data.contacts_table if data else '' }}">
+            
+            <!-- Визуальная таблица с input полями -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="contacts_visual_table">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">п/п</th>
+                            <th style="width: 25%;">ФИО <span class="text-danger">*</span></th>
+                            <th style="width: 30%;">Сфера ответственности <span class="text-danger">*</span></th>
+                            <th style="width: 35%;">Контакты</th>
+                            <th style="width: 5%; text-align: center;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="contacts_tbody">
+                        <!-- Заполняется автоматически через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add_contacts_row_btn">
+                <i class="bi bi-plus-circle"></i> Добавить строку
+            </button>
         </div>
     </div>
 
@@ -3004,6 +3075,451 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+<!-- JavaScript для таблицы материалов (14) -->
+<script>
+// Управление таблицей материалов
+document.addEventListener('DOMContentLoaded', function() {
+    const deliverablesTableHidden = document.getElementById('deliverables_table');
+    const deliverablesTableTbody = document.getElementById('deliverables_tbody');
+    const addDeliverablesRowBtn = document.getElementById('add_deliverables_row_btn');
+    
+    if (!deliverablesTableHidden || !deliverablesTableTbody) {
+        console.error('Deliverables table elements not found');
+        return;
+    }
+    
+    console.log('Deliverables table script loaded, button:', addDeliverablesRowBtn);
+    
+    // Функция для создания новой строки в таблице
+    function createDeliverablesRow(rowData = { document: '', activity: '' }) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm deliverable-document" 
+                       name="deliverable_document[]" 
+                       value="${rowData.document || ''}"
+                       placeholder="Документ"
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm deliverable-activity" 
+                       name="deliverable_activity[]" 
+                       value="${rowData.activity || ''}"
+                       placeholder="Подготавливается в результате деятельности"
+                       required>
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+                <button type="button" class="btn btn-sm btn-danger remove-deliverable-row" title="Удалить строку">
+                    <i class="bi bi-trash"></i> Удалить
+                </button>
+            </td>
+        `;
+        return row;
+    }
+    
+    // Функция для обновления скрытого поля
+    function updateDeliverablesHiddenField() {
+        const rows = deliverablesTableTbody.querySelectorAll('tr');
+        
+        const parts = [];
+        parts.push('Документ|Подготавливается в результате деятельности'); // Заголовок
+        
+        rows.forEach(row => {
+            const documentInput = row.querySelector('.deliverable-document');
+            const activityInput = row.querySelector('.deliverable-activity');
+            
+            if (documentInput && activityInput) {
+                const document = documentInput.value.trim();
+                const activity = activityInput.value.trim();
+                if (document || activity) {
+                    parts.push(`${document}|${activity}`);
+                }
+            }
+        });
+        
+        deliverablesTableHidden.value = parts.join('\n');
+    }
+    
+    // Функция для загрузки существующих данных
+    function loadExistingDeliverablesData() {
+        const deliverablesData = deliverablesTableHidden.value.trim();
+        
+        if (!deliverablesData) {
+            return; // Нет данных - таблица остается пустой
+        }
+        
+        const lines = deliverablesData.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+            return; // Только заголовок или пусто
+        }
+        
+        // Пропускаем заголовок (первая строка)
+        for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split('|').map(p => p.trim());
+            if (parts.length >= 2) {
+                const rowData = {
+                    document: parts[0] || '',
+                    activity: parts[1] || ''
+                };
+                const row = createDeliverablesRow(rowData);
+                deliverablesTableTbody.appendChild(row);
+            }
+        }
+    }
+    
+    // Загружаем существующие данные при загрузке страницы
+    loadExistingDeliverablesData();
+    
+    // Обработчик добавления новой строки
+    if (addDeliverablesRowBtn) {
+        console.log('Adding click handler to deliverables row button');
+        addDeliverablesRowBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add deliverables row button clicked');
+            const newRow = createDeliverablesRow();
+            deliverablesTableTbody.appendChild(newRow);
+            updateDeliverablesHiddenField();
+        });
+    } else {
+        console.error('Add deliverables row button not found!');
+    }
+    
+    // Обработчик удаления строки
+    deliverablesTableTbody.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-deliverable-row')) {
+            const row = e.target.closest('tr');
+            if (row) {
+                row.remove();
+                updateDeliverablesHiddenField();
+            }
+        }
+    });
+    
+    // Обновляем скрытое поле при изменении полей
+    deliverablesTableTbody.addEventListener('input', function() {
+        updateDeliverablesHiddenField();
+    });
+    
+    // Обновляем скрытое поле перед отправкой формы
+    const form = document.querySelector('form[action*="/mnt/"]');
+    if (form) {
+        form.addEventListener('submit', function() {
+            updateDeliverablesHiddenField();
+        });
+    }
+});
+</script>
+<!-- JavaScript для таблицы рабочих документов (14) -->
+<script>
+// Управление таблицей рабочих документов
+document.addEventListener('DOMContentLoaded', function() {
+    const deliverablesWorkingDocsTableHidden = document.getElementById('deliverables_working_docs_table');
+    const deliverablesWorkingDocsTableTbody = document.getElementById('deliverables_working_docs_tbody');
+    const addDeliverablesWorkingDocsRowBtn = document.getElementById('add_deliverables_working_docs_row_btn');
+    
+    if (!deliverablesWorkingDocsTableHidden || !deliverablesWorkingDocsTableTbody) {
+        console.error('Deliverables working docs table elements not found');
+        return;
+    }
+    
+    console.log('Deliverables working docs table script loaded, button:', addDeliverablesWorkingDocsRowBtn);
+    
+    // Функция для создания новой строки в таблице
+    function createDeliverablesWorkingDocsRow(rowData = { document: '', activity: '' }) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm deliverable-working-doc-document" 
+                       name="deliverable_working_doc_document[]" 
+                       value="${rowData.document || ''}"
+                       placeholder="Документ"
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm deliverable-working-doc-activity" 
+                       name="deliverable_working_doc_activity[]" 
+                       value="${rowData.activity || ''}"
+                       placeholder="Подготавливается в результате деятельности"
+                       required>
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+                <button type="button" class="btn btn-sm btn-danger remove-deliverable-working-doc-row" title="Удалить строку">
+                    <i class="bi bi-trash"></i> Удалить
+                </button>
+            </td>
+        `;
+        return row;
+    }
+    
+    // Функция для обновления скрытого поля
+    function updateDeliverablesWorkingDocsHiddenField() {
+        const rows = deliverablesWorkingDocsTableTbody.querySelectorAll('tr');
+        
+        const parts = [];
+        parts.push('Рабочие документы (предоставляются только в электронном виде)'); // Заголовок (первая строка)
+        
+        rows.forEach(row => {
+            const documentInput = row.querySelector('.deliverable-working-doc-document');
+            const activityInput = row.querySelector('.deliverable-working-doc-activity');
+            
+            if (documentInput && activityInput) {
+                const document = documentInput.value.trim();
+                const activity = activityInput.value.trim();
+                if (document || activity) {
+                    parts.push(`${document}|${activity}`);
+                }
+            }
+        });
+        
+        deliverablesWorkingDocsTableHidden.value = parts.join('\n');
+    }
+    
+    // Функция для загрузки существующих данных
+    function loadExistingDeliverablesWorkingDocsData() {
+        const deliverablesWorkingDocsData = deliverablesWorkingDocsTableHidden.value.trim();
+        
+        if (!deliverablesWorkingDocsData) {
+            return; // Нет данных - таблица остается пустой
+        }
+        
+        const lines = deliverablesWorkingDocsData.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+            return; // Только заголовок или пусто
+        }
+        
+        // Пропускаем заголовок (первая строка)
+        for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split('|').map(p => p.trim());
+            if (parts.length >= 2) {
+                const rowData = {
+                    document: parts[0] || '',
+                    activity: parts[1] || ''
+                };
+                const row = createDeliverablesWorkingDocsRow(rowData);
+                deliverablesWorkingDocsTableTbody.appendChild(row);
+            }
+        }
+    }
+    
+    // Загружаем существующие данные при загрузке страницы
+    loadExistingDeliverablesWorkingDocsData();
+    
+    // Обработчик добавления новой строки
+    if (addDeliverablesWorkingDocsRowBtn) {
+        console.log('Adding click handler to deliverables working docs row button');
+        addDeliverablesWorkingDocsRowBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add deliverables working docs row button clicked');
+            const newRow = createDeliverablesWorkingDocsRow();
+            deliverablesWorkingDocsTableTbody.appendChild(newRow);
+            updateDeliverablesWorkingDocsHiddenField();
+        });
+    } else {
+        console.error('Add deliverables working docs row button not found!');
+    }
+    
+    // Обработчик удаления строки
+    deliverablesWorkingDocsTableTbody.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-deliverable-working-doc-row')) {
+            const row = e.target.closest('tr');
+            if (row) {
+                row.remove();
+                updateDeliverablesWorkingDocsHiddenField();
+            }
+        }
+    });
+    
+    // Обновляем скрытое поле при изменении полей
+    deliverablesWorkingDocsTableTbody.addEventListener('input', function() {
+        updateDeliverablesWorkingDocsHiddenField();
+    });
+    
+    // Обновляем скрытое поле перед отправкой формы
+    const form = document.querySelector('form[action*="/mnt/"]');
+    if (form) {
+        form.addEventListener('submit', function() {
+            updateDeliverablesWorkingDocsHiddenField();
+        });
+    }
+});
+</script>
+<!-- JavaScript для таблицы контактов (15) -->
+<script>
+// Управление таблицей контактов
+document.addEventListener('DOMContentLoaded', function() {
+    const contactsTableHidden = document.getElementById('contacts_table');
+    const contactsTableTbody = document.getElementById('contacts_tbody');
+    const addContactsRowBtn = document.getElementById('add_contacts_row_btn');
+    
+    if (!contactsTableHidden || !contactsTableTbody) {
+        console.error('Contacts table elements not found');
+        return;
+    }
+    
+    console.log('Contacts table script loaded, button:', addContactsRowBtn);
+    
+    // Функция для перенумерации строк
+    function renumberContactsRows() {
+        const rows = contactsTableTbody.querySelectorAll('tr');
+        rows.forEach((row, index) => {
+            const numberSpan = row.querySelector('.contact-number-display');
+            const numberInput = row.querySelector('.contact-number');
+            if (numberSpan && numberInput) {
+                const number = index + 1;
+                numberSpan.textContent = number;
+                numberInput.value = number;
+            }
+        });
+    }
+    
+    // Функция для создания новой строки в таблице
+    function createContactsRow(rowData = { number: '', fio: '', responsibility: '', contacts: '' }) {
+        const row = document.createElement('tr');
+        const currentRowCount = contactsTableTbody.querySelectorAll('tr').length + 1;
+        const rowNumber = rowData.number || currentRowCount;
+        
+        row.innerHTML = `
+            <td style="text-align: center; vertical-align: middle;">
+                <span class="contact-number-display" style="font-weight: bold; display: inline-block; min-width: 20px;">${rowNumber}</span>
+                <input type="hidden" class="contact-number" name="contact_number[]" value="${rowNumber}">
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm contact-fio" 
+                       name="contact_fio[]" 
+                       value="${rowData.fio || ''}"
+                       placeholder="ФИО"
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm contact-responsibility" 
+                       name="contact_responsibility[]" 
+                       value="${rowData.responsibility || ''}"
+                       placeholder="Сфера ответственности"
+                       required>
+            </td>
+            <td>
+                <input type="text" 
+                       class="form-control form-control-sm contact-contacts" 
+                       name="contact_contacts[]" 
+                       value="${rowData.contacts || ''}"
+                       placeholder="Контакты">
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+                <button type="button" class="btn btn-sm btn-danger remove-contact-row" title="Удалить строку">
+                    <i class="bi bi-trash"></i> Удалить
+                </button>
+            </td>
+        `;
+        return row;
+    }
+    
+    // Функция для обновления скрытого поля
+    function updateContactsHiddenField() {
+        const rows = contactsTableTbody.querySelectorAll('tr');
+        
+        const parts = [];
+        parts.push('п/п|ФИО|Сфера ответственности|Контакты'); // Заголовок
+        
+        rows.forEach(row => {
+            const numberInput = row.querySelector('.contact-number');
+            const fioInput = row.querySelector('.contact-fio');
+            const responsibilityInput = row.querySelector('.contact-responsibility');
+            const contactsInput = row.querySelector('.contact-contacts');
+            
+            if (numberInput && fioInput && responsibilityInput) {
+                const number = numberInput.value.trim();
+                const fio = fioInput.value.trim();
+                const responsibility = responsibilityInput.value.trim();
+                const contacts = contactsInput ? contactsInput.value.trim() : '';
+                if (fio || responsibility || contacts) {
+                    parts.push(`${number}|${fio}|${responsibility}|${contacts}`);
+                }
+            }
+        });
+        
+        contactsTableHidden.value = parts.join('\n');
+    }
+    
+    // Функция для загрузки существующих данных
+    function loadExistingContactsData() {
+        const contactsData = contactsTableHidden.value.trim();
+        
+        if (!contactsData) {
+            return; // Нет данных - таблица остается пустой
+        }
+        
+        const lines = contactsData.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+            return; // Только заголовок или пусто
+        }
+        
+        // Пропускаем заголовок (первая строка)
+        for (let i = 1; i < lines.length; i++) {
+            const parts = lines[i].split('|').map(p => p.trim());
+            if (parts.length >= 3) {
+                const rowData = {
+                    number: parts[0] || '',
+                    fio: parts[1] || '',
+                    responsibility: parts[2] || '',
+                    contacts: parts[3] || ''
+                };
+                const row = createContactsRow(rowData);
+                contactsTableTbody.appendChild(row);
+            }
+        }
+        renumberContactsRows();
+    }
+    
+    // Загружаем существующие данные при загрузке страницы
+    loadExistingContactsData();
+    
+    // Обработчик добавления новой строки
+    if (addContactsRowBtn) {
+        console.log('Adding click handler to contacts row button');
+        addContactsRowBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add contacts row button clicked');
+            const newRow = createContactsRow();
+            contactsTableTbody.appendChild(newRow);
+            renumberContactsRows();
+            updateContactsHiddenField();
+        });
+    } else {
+        console.error('Add contacts row button not found!');
+    }
+    
+    // Обработчик удаления строки
+    contactsTableTbody.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-contact-row')) {
+            const row = e.target.closest('tr');
+            if (row) {
+                row.remove();
+                renumberContactsRows();
+                updateContactsHiddenField();
+            }
+        }
+    });
+    
+    // Обновляем скрытое поле при изменении полей
+    contactsTableTbody.addEventListener('input', function() {
+        updateContactsHiddenField();
+    });
+    
+    // Обновляем скрытое поле перед отправкой формы
+    const form = document.querySelector('form[action*="/mnt/"]');
+    if (form) {
+        form.addEventListener('submit', function() {
+            updateContactsHiddenField();
+        });
+    }
+});
+</script>
 <script>
 // Инициализация редакторов таблиц и других функций
 document.addEventListener('DOMContentLoaded', function() {
@@ -3023,8 +3539,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // 'monitoring_tools_table', // Убрали, т.к. теперь визуальная таблица
         // 'system_resources_table', // Убрали, т.к. теперь визуальная таблица
         // 'business_metrics_table', // Убрали, т.к. теперь визуальная таблица
-        'deliverables_table',
-        'contacts_table'
+        // 'deliverables_table', // Убрали, т.к. теперь визуальная таблица
+        // 'contacts_table', // Убрали, т.к. теперь визуальная таблица
     ];
     
     tableFields.forEach(fieldId => {

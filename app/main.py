@@ -595,6 +595,7 @@ async def handle_create_form(
     # Раздел 14: Материалы
     deliverables_intro: Optional[str] = Form(None),
     deliverables_table: Optional[str] = Form(None),
+    deliverables_working_docs_table: Optional[str] = Form(None),
     # Раздел 15: Контакты
     contacts_table: Optional[str] = Form(None),
     # Confluence
@@ -690,6 +691,7 @@ async def handle_create_form(
         "customer_requirements_list": customer_requirements_list,
         "deliverables_intro": deliverables_intro,
         "deliverables_table": deliverables_table,
+        "deliverables_working_docs_table": deliverables_working_docs_table,
         "contacts_table": contacts_table,
     }
     
@@ -1035,6 +1037,7 @@ async def handle_edit_form(
     # Раздел 14: Материалы
     deliverables_intro: Optional[str] = Form(None),
     deliverables_table: Optional[str] = Form(None),
+    deliverables_working_docs_table: Optional[str] = Form(None),
     # Раздел 15: Контакты
     contacts_table: Optional[str] = Form(None),
     # Confluence
@@ -1133,6 +1136,7 @@ async def handle_edit_form(
         "customer_requirements_list": customer_requirements_list,
         "deliverables_intro": deliverables_intro,
         "deliverables_table": deliverables_table,
+        "deliverables_working_docs_table": deliverables_working_docs_table,
         "contacts_table": contacts_table,
     }
     
