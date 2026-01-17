@@ -3708,29 +3708,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     */
     
-    // Сохранение выбранных тегов в скрытое поле формы при создании
+    // Синхронизация тегов из текстового поля (если есть чекбоксы, они также обновляют текстовое поле)
     const formForTags = document.querySelector('form[action*="/mnt/create"]');
     if (formForTags) {
-        // Создаем скрытое поле для тегов
-        let hiddenInput = document.getElementById('tags_hidden');
-        if (!hiddenInput) {
-            hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.id = 'tags_hidden';
-            hiddenInput.name = 'tags';
-            formForTags.appendChild(hiddenInput);
-        }
-        
-        // Обработка изменения чекбоксов тегов
-        const tagCheckboxes = document.querySelectorAll('.tag-checkbox');
-        tagCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                const selectedTags = Array.from(document.querySelectorAll('.tag-checkbox:checked'))
-                    .map(cb => cb.value)
-                    .join(',');
-                hiddenInput.value = selectedTags;
+        const tagsInput = document.getElementById('tags');
+        if (tagsInput) {
+            // Обработка изменения чекбоксов тегов (если они есть)
+            const tagCheckboxes = document.querySelectorAll('.tag-checkbox');
+            if (tagCheckboxes.length > 0) {
+                tagCheckboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', function() {
+                        const selectedTags = Array.from(document.querySelectorAll('.tag-checkbox:checked'))
+                            .map(cb => cb.value)
+                            .join(',');
+                        tagsInput.value = selectedTags;
+                    });
+                });
+            }
+            
+            // Убеждаемся, что значение текстового поля отправляется при submit
+            formForTags.addEventListener('submit', function(e) {
+                // Значение уже в поле, форма отправит его автоматически
+                console.log('Отправка формы, теги:', tagsInput.value);
             });
-        });
+        }
     }
     
     // Превью при создании

@@ -6,6 +6,7 @@ from datetime import datetime
 import json
 import re
 from app.models import MNTDocument, MNTStatus
+from app.logger import logger
 
 
 def create_mnt(db: Session, data: dict, confluence_space: str, confluence_parent_id: Optional[int] = None) -> dict:
@@ -16,11 +17,20 @@ def create_mnt(db: Session, data: dict, confluence_space: str, confluence_parent
         RETURNING id, created_at, updated_at
     """)
     
+    # Убираем служебные поля из data_json, они уже в отдельных колонках
+    data_for_json = {k: v for k, v in data.items() if k not in ["title", "project", "author"]}
+    
+    # Логируем теги перед сохранением
+    if "tags" in data_for_json:
+        logger.debug(f"CREATE_MNT: Сохраняем теги в data_json: {data_for_json.get('tags')}")
+    else:
+        logger.warning(f"CREATE_MNT: Теги НЕ найдены в data_for_json! Доступные ключи: {list(data_for_json.keys())}")
+    
     result = db.execute(query, {
         "title": data.get("title", ""),
         "project": data.get("project", ""),
         "author": data.get("author", ""),
-        "data_json": json.dumps(data, ensure_ascii=False),
+        "data_json": json.dumps(data_for_json, ensure_ascii=False),
         "confluence_space": confluence_space,
         "confluence_parent_id": confluence_parent_id,
         "status": "draft"
@@ -86,6 +96,15 @@ def update_mnt(db: Session, mnt_id: int, data: dict, confluence_space: str, conf
         status: Если указан, устанавливает статус. Если None - статус не меняется.
                 Обычно используется для установки 'draft' при сохранении без публикации.
     """
+    # Убираем служебные поля из data_json, они уже в отдельных колонках
+    data_for_json = {k: v for k, v in data.items() if k not in ["title", "project", "author"]}
+    
+    # Логируем теги перед сохранением
+    if "tags" in data_for_json:
+        logger.debug(f"UPDATE_MNT: Сохраняем теги в data_json: {data_for_json.get('tags')}")
+    else:
+        logger.warning(f"UPDATE_MNT: Теги НЕ найдены в data_for_json! Доступные ключи: {list(data_for_json.keys())}")
+    
     if status:
         query = text("""
             UPDATE mnt.documents
@@ -104,7 +123,7 @@ def update_mnt(db: Session, mnt_id: int, data: dict, confluence_space: str, conf
             "title": data.get("title", ""),
             "project": data.get("project", ""),
             "author": data.get("author", ""),
-            "data_json": json.dumps(data, ensure_ascii=False),
+            "data_json": json.dumps(data_for_json, ensure_ascii=False),
             "confluence_space": confluence_space,
             "confluence_parent_id": confluence_parent_id,
             "status": status
@@ -126,7 +145,7 @@ def update_mnt(db: Session, mnt_id: int, data: dict, confluence_space: str, conf
             "title": data.get("title", ""),
             "project": data.get("project", ""),
             "author": data.get("author", ""),
-            "data_json": json.dumps(data, ensure_ascii=False),
+            "data_json": json.dumps(data_for_json, ensure_ascii=False),
             "confluence_space": confluence_space,
             "confluence_parent_id": confluence_parent_id
         }

@@ -277,6 +277,10 @@ async def edit_page(
             logger.warning(f"data_json для МНТ {mnt_id} не является словарем, тип: {type(data_json)}")
             data_json = {}
         
+        # Логируем теги при загрузке страницы редактирования
+        tags_in_data = data_json.get("tags", [])
+        logger.info(f"EDIT_PAGE: Загрузка страницы редактирования МНТ {mnt_id}, теги в data_json: {tags_in_data} (тип: {type(tags_in_data)})")
+        
         # Проверяем, есть ли неопубликованные изменения
         unpublished_changes = None
         if document.get("status") == "published" and document.get("confluence_page_id"):
@@ -763,13 +767,23 @@ async def handle_create_form(
         )
     
     # Обрабатываем теги - разбиваем строку через запятую и сохраняем как список в JSON
-    if tags:
-        tag_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
-        data["tags"] = tag_list
-        logger.debug(f"CREATE: Теги из формы: '{tags}' -> список: {tag_list}")
+    logger.info(f"CREATE: Получены теги из формы: '{tags}' (тип: {type(tags)}, repr: {repr(tags)})")
+    
+    # Проверяем, что теги не None и не пустая строка
+    tags_str = str(tags).strip() if tags is not None else ""
+    if tags_str:
+        tag_list = [tag.strip() for tag in tags_str.split(',') if tag.strip()]
+        if tag_list:
+            data["tags"] = tag_list
+            logger.info(f"CREATE: Теги из формы успешно обработаны: '{tags}' -> список: {tag_list}")
+        else:
+            data["tags"] = []
+            logger.warning(f"CREATE: Теги из формы '{tags}' не содержат валидных значений, устанавливаем пустой список")
     else:
         data["tags"] = []
-        logger.debug("CREATE: Теги не указаны, устанавливаем пустой список")
+        logger.info(f"CREATE: Теги не указаны в форме (tags={repr(tags)}), устанавливаем пустой список")
+    
+    logger.info(f"CREATE: Словарь data после обработки тегов содержит tags: {data.get('tags', 'NOT FOUND')} (тип: {type(data.get('tags'))})")
     
     # Создаем МНТ в БД (используем старую структуру БД для совместимости)
     try:
@@ -787,7 +801,10 @@ async def handle_create_form(
             "author": author,
             **data  # Все новые данные попадают в data_json, включая теги
         }
-        logger.debug(f"CREATE: Данные для сохранения включают tags: {mnt_data_for_db.get('tags', 'NOT FOUND')}")
+        logger.info(f"CREATE: Данные для сохранения включают tags: {mnt_data_for_db.get('tags', 'NOT FOUND')} (тип: {type(mnt_data_for_db.get('tags'))})")
+        logger.info(f"CREATE: Полный словарь mnt_data_for_db содержит ключи: {list(mnt_data_for_db.keys())}")
+        if "tags" not in mnt_data_for_db:
+            logger.error("CREATE: КРИТИЧЕСКАЯ ОШИБКА - теги отсутствуют в mnt_data_for_db!")
         result = create_mnt(db, mnt_data_for_db, confluence_space, confluence_parent_id)
         mnt_id = result["id"]
         
@@ -1170,13 +1187,24 @@ async def handle_edit_form(
     data["custom_sections"] = custom_sections if custom_sections else None
     
     # Обрабатываем теги - разбиваем строку через запятую и сохраняем как список в JSON
-    if tags:
-        tag_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
+    # При редактировании: если теги не указаны в форме, сохраняем существующие из БД
+    logger.debug(f"EDIT: Получены теги из формы: '{tags}' (тип: {type(tags)})")
+    if tags is not None and str(tags).strip():
+        tag_list = [tag.strip() for tag in str(tags).split(',') if tag.strip()]
         data["tags"] = tag_list
-        logger.debug(f"EDIT: Теги из формы: '{tags}' -> список: {tag_list}")
+        logger.info(f"EDIT: Теги из формы: '{tags}' -> список: {tag_list}")
     else:
-        data["tags"] = []
-        logger.debug("EDIT: Теги не указаны, устанавливаем пустой список")
+        # Если теги не указаны - сохраняем существующие из БД (если они есть)
+        existing_tags = []
+        if document_before and isinstance(document_before.get("data_json"), dict):
+            existing_tags = document_before.get("data_json", {}).get("tags", [])
+            if isinstance(existing_tags, list):
+                logger.debug(f"EDIT: Теги не указаны в форме, сохраняем существующие из БД: {existing_tags}")
+            else:
+                existing_tags = []
+                logger.warning(f"EDIT: Существующие теги в БД не являются списком: {type(existing_tags)}")
+        data["tags"] = existing_tags
+        logger.debug(f"EDIT: Используем существующие теги из БД: {existing_tags}")
     
     # Для совместимости с БД используем project_name как title и project
     title_for_db = project_name
