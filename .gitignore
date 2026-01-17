@@ -10,8 +10,10 @@ ENV/
 .venv
 
 # Environment
-# .env - теперь добавляется в git по требованию пользователя
+.env
 .env.local
+.env.*
+!.env.example
 
 # IDE
 .vscode/
