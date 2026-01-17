@@ -2,6 +2,18 @@
 
 {% block title %}Редактировать МНТ - МНТ Generator{% endblock %}
 
+{% block breadcrumbs %}
+    <nav aria-label="breadcrumb" class="bg-light border-bottom py-2">
+        <div class="container-fluid">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/">Главная</a></li>
+                <li class="breadcrumb-item"><a href="/mnt/list">Список МНТ</a></li>
+                <li class="breadcrumb-item active">Редактировать МНТ #{{ mnt_id }}</li>
+            </ol>
+        </div>
+    </nav>
+{% endblock %}
+
 {% block navigation %}
 <nav class="form-navigation">
     <h5>Навигация</h5>
@@ -3989,6 +4001,8 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="{{ url_for('static', path='js/drag-drop-tables.js') }}"></script>
 <!-- Автодополнение для полей -->
 <script src="{{ url_for('static', path='js/autocomplete.js') }}"></script>
+<!-- Подсказки и помощь для полей -->
+<script src="{{ url_for('static', path='js/field-help.js') }}"></script>
 
 <!-- Инициализация Drag & Drop и автодополнения -->
 <script>
@@ -4224,8 +4238,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // ========== Автодополнение для полей ==========
     
-    // Автодополнение для поля "Проект"
-    const projectInput = document.getElementById('project');
+    // Автодополнение для поля "Проект" (project_name или project)
+    const projectInput = document.getElementById('project_name') || document.getElementById('project');
     if (projectInput) {
         initAutocomplete(projectInput, {
             source: async () => {
@@ -4298,6 +4312,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 10);
             }
         });
+    }
+    
+    // Инициализируем подсказки для полей
+    if (typeof initFieldHelp === 'function') {
+        setTimeout(() => {
+            initFieldHelp();
+        }, 500); // Даем время на загрузку всех полей
     }
 });
 </script>

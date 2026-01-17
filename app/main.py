@@ -357,7 +357,49 @@ async def view_json(mnt_id: int, db: Session = Depends(get_db)):
     if not document:
         raise HTTPException(status_code=404, detail="МНТ не найден")
     
-    return JSONResponse(content=document)
+    # Преобразуем datetime объекты в строки для JSON сериализации
+    def convert_datetime_to_str(obj):
+        """Рекурсивно преобразует datetime объекты в строки"""
+        if obj is None:
+            return None
+        if isinstance(obj, dict):
+            return {key: convert_datetime_to_str(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_datetime_to_str(item) for item in obj]
+        elif isinstance(obj, tuple):
+            return tuple(convert_datetime_to_str(item) for item in obj)
+        elif isinstance(obj, datetime):
+            return obj.isoformat() if obj else None
+        elif hasattr(obj, 'isoformat') and callable(getattr(obj, 'isoformat', None)):
+            # Проверяем на datetime-like объекты (date, datetime и т.д.)
+            try:
+                return obj.isoformat()
+            except:
+                return str(obj)
+        elif hasattr(obj, 'strftime') and callable(getattr(obj, 'strftime', None)):
+            # Дополнительная проверка на date/datetime объекты
+            try:
+                return obj.isoformat() if hasattr(obj, 'isoformat') else str(obj)
+            except:
+                return str(obj)
+        else:
+            return obj
+    
+    # Конвертируем документ
+    try:
+        serializable_document = convert_datetime_to_str(document)
+        return JSONResponse(content=serializable_document)
+    except Exception as e:
+        logger.error(f"Ошибка сериализации документа {mnt_id} в JSON: {e}", exc_info=True)
+        # Альтернативный способ - используем json.dumps с default handler
+        try:
+            json_str = json.dumps(document, default=str, ensure_ascii=False)
+            return JSONResponse(content=json.loads(json_str))
+        except Exception as e2:
+            logger.error(f"Ошибка альтернативной сериализации: {e2}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Ошибка сериализации данных: {str(e2)}")
+
+
 
 
 # ==================== API Routes ====================

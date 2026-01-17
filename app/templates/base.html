@@ -580,6 +580,43 @@
         .navbar {
             box-shadow: 0 2px 4px rgba(0,0,0,.1);
         }
+        
+        /* Стили для хлебных крошек */
+        .breadcrumb {
+            background-color: transparent;
+            padding: 0.5rem 0;
+            margin-bottom: 0;
+        }
+        
+        .breadcrumb-item + .breadcrumb-item::before {
+            content: "›";
+            color: #6c757d;
+            padding: 0 0.5rem;
+        }
+        
+        .breadcrumb-item a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+        
+        .breadcrumb-item a:hover {
+            text-decoration: underline;
+        }
+        
+        .breadcrumb-item.active {
+            color: #6c757d;
+        }
+        
+        /* Стили для подсказок полей */
+        .field-help-icon {
+            cursor: help;
+            transition: all 0.2s;
+        }
+        
+        .field-help-icon:hover {
+            transform: scale(1.2);
+            color: #2196f3 !important;
+        }
     </style>
 </head>
 <body>

@@ -2,6 +2,17 @@
 
 {% block title %}Список МНТ - МНТ Generator{% endblock %}
 
+{% block breadcrumbs %}
+    <nav aria-label="breadcrumb" class="bg-light border-bottom py-2">
+        <div class="container-fluid">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/">Главная</a></li>
+                <li class="breadcrumb-item active">Список МНТ</li>
+            </ol>
+        </div>
+    </nav>
+{% endblock %}
+
 {% block content %}
 <!-- Уведомления об успехе/ошибках -->
 {% if success_message %}
@@ -207,6 +218,9 @@
                 </td>
                 <td>
                     <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-info" onclick="quickPreview({{ doc.id }})" title="Быстрый просмотр">
+                            👁️ Просмотр
+                        </button>
                         <a href="/mnt/{{ doc.id }}/edit" class="btn btn-sm btn-outline-primary">✏️ Редактировать</a>
                         <form method="post" action="/mnt/{{ doc.id }}/duplicate" style="display: inline;" 
                               onsubmit="return confirm('Создать копию этого МНТ?\\n\\nКопия будет создана как черновик с названием \"{{ doc.title }} (копия)\".\\n\\nИстория изменений и лист согласования начнутся заново.');">
@@ -276,6 +290,461 @@
     МНТ не найдены. <a href="/mnt/create">Создайте первый МНТ</a>.
 </div>
 {% endif %}
+
+<!-- Модальное окно для быстрого просмотра -->
+<div class="modal fade" id="quickPreviewModal" tabindex="-1" aria-labelledby="quickPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="quickPreviewModalLabel">Быстрый просмотр МНТ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="quickPreviewContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <a id="editMntLink" href="#" class="btn btn-primary">✏️ Редактировать</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Функция быстрого просмотра МНТ
+function quickPreview(mntId) {
+    const modal = new bootstrap.Modal(document.getElementById('quickPreviewModal'));
+    const contentDiv = document.getElementById('quickPreviewContent');
+    const editLink = document.getElementById('editMntLink');
+    
+    // Устанавливаем ссылку на редактирование
+    editLink.href = `/mnt/${mntId}/edit`;
+    
+    // Показываем загрузку
+    contentDiv.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+            <p class="mt-3">Загрузка данных МНТ...</p>
+        </div>
+    `;
+    
+    // Открываем модальное окно
+    modal.show();
+    
+    // Загружаем данные
+    fetch(`/mnt/${mntId}/view`)
+        .then(response => response.json())
+        .then(data => {
+            // Формируем HTML для отображения
+            const html = generatePreviewHTML(data);
+            contentDiv.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки МНТ:', error);
+            contentDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <strong>Ошибка!</strong> Не удалось загрузить данные МНТ. Попробуйте позже.
+                </div>
+            `;
+        });
+}
+
+// Генерация HTML для предпросмотра
+function generatePreviewHTML(document) {
+    const data = document.data_json || {};
+    
+    let html = `
+        <div class="mb-4">
+            <h4>${escapeHtml(document.title || 'Без названия')}</h4>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <strong>Проект:</strong> ${escapeHtml(document.project || 'Не указан')}<br>
+                    <strong>Автор:</strong> ${escapeHtml(document.author || 'Не указан')}<br>
+                    <strong>Статус:</strong> ${getStatusBadge(document.status || 'draft')}
+                </div>
+                <div class="col-md-6">
+                    <strong>Создан:</strong> ${formatDate(document.created_at)}<br>
+                    <strong>Обновлен:</strong> ${formatDate(document.updated_at)}<br>
+                    ${document.confluence_page_url ? `<strong>Confluence:</strong> <a href="${escapeHtml(document.confluence_page_url)}" target="_blank" class="btn btn-sm btn-link p-0">Открыть страницу</a>` : ''}
+                </div>
+            </div>
+            ${document.tags && document.tags.length > 0 ? `
+                <div class="mt-2">
+                    <strong>Теги:</strong>
+                    ${document.tags.map(tag => `<span class="badge bg-primary me-1">${escapeHtml(tag.name || tag)}</span>`).join('')}
+                </div>
+            ` : ''}
+        </div>
+        <hr>
+        <div class="mnt-preview-content" style="max-height: 500px; overflow-y: auto;">
+    `;
+    
+    let hasContent = false;
+    
+    // Раздел 1: История изменений
+    if (data.history_changes_table && formatTable(data.history_changes_table).trim()) {
+        html += `<h5>1. История изменений</h5>${formatTable(data.history_changes_table)}<hr>`;
+        hasContent = true;
+    }
+    
+    // Раздел 2: Лист согласования
+    if (data.approval_list_table && formatTable(data.approval_list_table).trim()) {
+        html += `<h5>2. Лист согласования</h5>${formatTable(data.approval_list_table)}<hr>`;
+        hasContent = true;
+    }
+    
+    // Раздел 3: Сокращения и терминология
+    if ((data.abbreviations_table && formatTable(data.abbreviations_table).trim()) || 
+        (data.terminology_table && formatTable(data.terminology_table).trim())) {
+        html += `<h5>3. Сокращения и терминология</h5>`;
+        if (data.abbreviations_table && formatTable(data.abbreviations_table).trim()) {
+            html += `<h6>3.1 Сокращения</h6>${formatTable(data.abbreviations_table)}`;
+        }
+        if (data.terminology_table && formatTable(data.terminology_table).trim()) {
+            html += `<h6>3.2 Терминология</h6>${formatTable(data.terminology_table)}`;
+        }
+        html += `<hr>`;
+        hasContent = true;
+    }
+    
+    // Раздел 4: Введение
+    if (data.introduction_text && formatText(data.introduction_text).trim()) {
+        html += `<h5>4. Введение</h5><div>${formatText(data.introduction_text)}</div><hr>`;
+        hasContent = true;
+    }
+    
+    // Раздел 5: Цели и задачи НТ
+    if ((data.goals_business && formatText(data.goals_business).trim()) || 
+        (data.goals_technical && formatText(data.goals_technical).trim()) || 
+        (data.tasks_nt && formatText(data.tasks_nt).trim())) {
+        html += `<h5>5. Цели и задачи НТ</h5>`;
+        if (data.goals_business && formatText(data.goals_business).trim()) {
+            html += `<h6>5.1 Бизнес-цели</h6><div>${formatList(data.goals_business)}</div>`;
+        }
+        if (data.goals_technical && formatText(data.goals_technical).trim()) {
+            html += `<h6>5.1 Технические цели</h6><div>${formatList(data.goals_technical)}</div>`;
+        }
+        if (data.tasks_nt && formatText(data.tasks_nt).trim()) {
+            html += `<h6>5.2 Задачи НТ</h6><div>${formatList(data.tasks_nt, true)}</div>`;
+        }
+        html += `<hr>`;
+        hasContent = true;
+    }
+    
+    // Раздел 6: Ограничения и риски НТ
+    if ((data.limitations_list && formatText(data.limitations_list).trim()) || 
+        (data.risks_table && formatTable(data.risks_table).trim())) {
+        html += `<h5>6. Ограничения и риски НТ</h5>`;
+        if (data.limitations_list && formatText(data.limitations_list).trim()) {
+            html += `<h6>6.1 Ограничения НТ</h6><div>${formatList(data.limitations_list, true)}</div>`;
+        }
+        if (data.risks_table && formatTable(data.risks_table).trim()) {
+            html += `<h6>6.2 Риски НТ</h6>${formatTable(data.risks_table)}`;
+        }
+        html += `<hr>`;
+        hasContent = true;
+    }
+    
+    // Раздел 7: Объект НТ
+    if ((data.object_general && formatText(data.object_general).trim()) || 
+        (data.performance_requirements && formatText(data.performance_requirements).trim()) ||
+        (data.component_architecture_text && formatText(data.component_architecture_text).trim()) ||
+        (data.information_architecture_text && formatText(data.information_architecture_text).trim())) {
+        html += `<h5>7. Объект НТ</h5>`;
+        if (data.object_general && formatText(data.object_general).trim()) {
+            html += `<h6>7.1 Общие сведения</h6><div>${formatText(data.object_general)}</div>`;
+        }
+        if (data.performance_requirements && formatText(data.performance_requirements).trim()) {
+            html += `<h6>7.2 Требования к производительности</h6><div>${formatList(data.performance_requirements)}</div>`;
+        }
+        if (data.component_architecture_text && formatText(data.component_architecture_text).trim()) {
+            html += `<h6>7.3.1 Компонентная архитектура</h6><div>${formatList(data.component_architecture_text)}</div>`;
+        }
+        if (data.information_architecture_text && formatText(data.information_architecture_text).trim()) {
+            html += `<h6>7.3.2 Информационная архитектура</h6><div>${formatText(data.information_architecture_text)}</div>`;
+        }
+        html += `<hr>`;
+        hasContent = true;
+    }
+    
+    // Раздел 8: Тестовый и промышленный стенды
+    if ((data.test_stand_architecture_text && formatText(data.test_stand_architecture_text).trim()) ||
+        (data.stand_comparison_table && formatTable(data.stand_comparison_table).trim())) {
+        html += `<h5>8. Тестовый и промышленный стенды</h5>`;
+        if (data.test_stand_architecture_text && formatText(data.test_stand_architecture_text).trim()) {
+            html += `<h6>8.1 Архитектура тестового стенда</h6><div>${formatText(data.test_stand_architecture_text)}</div>`;
+        }
+        if (data.stand_comparison_table && formatTable(data.stand_comparison_table).trim()) {
+            html += `<h6>8.2 Сравнение конфигураций</h6>${formatTable(data.stand_comparison_table)}`;
+        }
+        html += `<hr>`;
+        hasContent = true;
+    }
+    
+    // Раздел 9: Стратегия тестирования
+    if ((data.planned_tests_intro && formatText(data.planned_tests_intro).trim()) ||
+        (data.planned_tests_table && formatTable(data.planned_tests_table).trim()) ||
+        (data.completion_conditions && formatText(data.completion_conditions).trim())) {
+        html += `<h5>9. Стратегия тестирования</h5>`;
+        if (data.planned_tests_intro && formatText(data.planned_tests_intro).trim()) {
+            html += `<h6>9.1 Описание планируемых тестов</h6><div>${formatText(data.planned_tests_intro)}</div>`;
+        }
+        if (data.planned_tests_table && formatTable(data.planned_tests_table).trim()) {
+            html += `${formatTable(data.planned_tests_table)}`;
+        }
+        if (data.completion_conditions && formatText(data.completion_conditions).trim()) {
+            html += `<h6>9.2 Условия завершения НТ</h6><div>${formatList(data.completion_conditions)}</div>`;
+        }
+        html += `<hr>`;
+        hasContent = true;
+    }
+    
+    // Раздел 10: Наполнение БД
+    if ((data.database_preparation_text && formatText(data.database_preparation_text).trim()) ||
+        (data.database_preparation_table && formatTable(data.database_preparation_table).trim())) {
+        html += `<h5>10. Наполнение БД</h5>`;
+        if (data.database_preparation_text && formatText(data.database_preparation_text).trim()) {
+            html += `<div>${formatText(data.database_preparation_text)}</div>`;
+        }
+        if (data.database_preparation_table && formatTable(data.database_preparation_table).trim()) {
+            html += `${formatTable(data.database_preparation_table)}`;
+        }
+        html += `<hr>`;
+        hasContent = true;
+    }
+    
+    // Раздел 11: Моделирование нагрузки
+    if ((data.load_modeling_principles && formatText(data.load_modeling_principles).trim()) ||
+        (data.load_profiles_intro && formatText(data.load_profiles_intro).trim()) ||
+        (data.load_profiles_table && formatTable(data.load_profiles_table).trim()) ||
+        (data.use_scenarios_intro && formatText(data.use_scenarios_intro).trim()) ||
+        (data.use_scenarios_table && formatTable(data.use_scenarios_table).trim()) ||
+        (data.emulators_description && formatText(data.emulators_description).trim())) {
+        html += `<h5>11. Моделирование нагрузки</h5>`;
+        if (data.load_modeling_principles && formatText(data.load_modeling_principles).trim()) {
+            html += `<h6>11.1 Общие принципы моделирования нагрузки</h6><div>${formatText(data.load_modeling_principles)}</div>`;
+        }
+        if (data.load_profiles_intro && formatText(data.load_profiles_intro).trim()) {
+            html += `<h6>11.2 Профили нагрузки</h6><div>${formatText(data.load_profiles_intro)}</div>`;
+        }
+        if (data.load_profiles_table && formatTable(data.load_profiles_table).trim()) {
+            html += `${formatTable(data.load_profiles_table)}`;
+        }
+        if (data.use_scenarios_intro && formatText(data.use_scenarios_intro).trim()) {
+            html += `<h6>11.3 Сценарии использования</h6><div>${formatText(data.use_scenarios_intro)}</div>`;
+        }
+        if (data.use_scenarios_table && formatTable(data.use_scenarios_table).trim()) {
+            html += `${formatTable(data.use_scenarios_table)}`;
+        }
+        if (data.emulators_description && formatText(data.emulators_description).trim()) {
+            html += `<h6>11.4 Описание работы эмуляторов</h6><div>${formatText(data.emulators_description)}</div>`;
+        }
+        html += `<hr>`;
+        hasContent = true;
+    }
+    
+    // Раздел 12: Мониторинг
+    if ((data.monitoring_intro && formatText(data.monitoring_intro).trim()) ||
+        (data.monitoring_tools_intro && formatText(data.monitoring_tools_intro).trim()) ||
+        (data.monitoring_tools_table && formatTable(data.monitoring_tools_table).trim()) ||
+        (data.monitoring_tools_note && formatText(data.monitoring_tools_note).trim()) ||
+        (data.system_resources_intro && formatText(data.system_resources_intro).trim()) ||
+        (data.system_resources_table && formatTable(data.system_resources_table).trim()) ||
+        (data.business_metrics_intro && formatText(data.business_metrics_intro).trim()) ||
+        (data.business_metrics_table && formatTable(data.business_metrics_table).trim())) {
+        html += `<h5>12. Мониторинг</h5>`;
+        if (data.monitoring_intro && formatText(data.monitoring_intro).trim()) {
+            html += `<div>${formatText(data.monitoring_intro)}</div>`;
+        }
+        if (data.monitoring_tools_intro && formatText(data.monitoring_tools_intro).trim()) {
+            html += `<h6>12.1 Описание средств мониторинга</h6><div>${formatText(data.monitoring_tools_intro)}</div>`;
+        }
+        if (data.monitoring_tools_table && formatTable(data.monitoring_tools_table).trim()) {
+            html += `${formatTable(data.monitoring_tools_table)}`;
+        }
+        if (data.monitoring_tools_note && formatText(data.monitoring_tools_note).trim()) {
+            html += `<div>${formatText(data.monitoring_tools_note)}</div>`;
+        }
+        if ((data.system_resources_intro && formatText(data.system_resources_intro).trim()) ||
+            (data.system_resources_table && formatTable(data.system_resources_table).trim())) {
+            html += `<h6>12.2.1 Мониторинг системных ресурсов</h6>`;
+            if (data.system_resources_intro && formatText(data.system_resources_intro).trim()) {
+                html += `<div>${formatText(data.system_resources_intro)}</div>`;
+            }
+            if (data.system_resources_table && formatTable(data.system_resources_table).trim()) {
+                html += `${formatTable(data.system_resources_table)}`;
+            }
+        }
+        if ((data.business_metrics_intro && formatText(data.business_metrics_intro).trim()) ||
+            (data.business_metrics_table && formatTable(data.business_metrics_table).trim())) {
+            html += `<h6>12.2.2 Мониторинг бизнес-метрик</h6>`;
+            if (data.business_metrics_intro && formatText(data.business_metrics_intro).trim()) {
+                html += `<div>${formatText(data.business_metrics_intro)}</div>`;
+            }
+            if (data.business_metrics_table && formatTable(data.business_metrics_table).trim()) {
+                html += `${formatTable(data.business_metrics_table)}`;
+            }
+        }
+        html += `<hr>`;
+        hasContent = true;
+    }
+    
+    // Раздел 13: Требования к Заказчику
+    if (data.customer_requirements_list && formatText(data.customer_requirements_list).trim()) {
+        html += `<h5>13. Требования к Заказчику</h5><div>${formatList(data.customer_requirements_list, true)}</div><hr>`;
+        hasContent = true;
+    }
+    
+    // Раздел 14: Материалы, подлежащие сдаче
+    if ((data.deliverables_intro && formatText(data.deliverables_intro).trim()) ||
+        (data.deliverables_table && formatTable(data.deliverables_table).trim()) ||
+        (data.deliverables_working_docs_table && formatTable(data.deliverables_working_docs_table).trim())) {
+        html += `<h5>14. Материалы, подлежащие сдаче</h5>`;
+        if (data.deliverables_intro && formatText(data.deliverables_intro).trim()) {
+            html += `<div>${formatText(data.deliverables_intro)}</div>`;
+        }
+        if (data.deliverables_table && formatTable(data.deliverables_table).trim()) {
+            html += `${formatTable(data.deliverables_table)}`;
+        }
+        if (data.deliverables_working_docs_table && formatTable(data.deliverables_working_docs_table).trim()) {
+            html += `<h6>Рабочие документы (предоставляются только в электронном виде):</h6>${formatTable(data.deliverables_working_docs_table)}`;
+        }
+        html += `<hr>`;
+        hasContent = true;
+    }
+    
+    // Раздел 15: Контакты
+    if (data.contacts_table && formatTable(data.contacts_table).trim()) {
+        html += `<h5>15. Контакты</h5>${formatTable(data.contacts_table)}<hr>`;
+        hasContent = true;
+    }
+    
+    if (!hasContent) {
+        html += `
+            <div class="alert alert-warning mt-4 mb-0">
+                <strong>⚠️</strong> Данный МНТ еще не содержит заполненных разделов. Используйте кнопку "Редактировать" для начала работы.
+            </div>
+        `;
+    }
+    
+    html += `</div>`;
+    
+    return html;
+}
+
+// Форматирование таблицы
+function formatTable(tableText) {
+    if (!tableText || !tableText.trim()) return '';
+    
+    const lines = tableText.split('\n').filter(line => line.trim());
+    if (lines.length === 0) return '';
+    
+    let html = '<div class="table-responsive"><table class="table table-sm table-bordered">';
+    
+    for (let i = 0; i < lines.length; i++) {
+        const cols = lines[i].split('|').map(col => col.trim());
+        if (cols.length === 0) continue;
+        
+        if (i === 0) {
+            // Заголовок
+            html += '<thead><tr>';
+            cols.forEach(col => {
+                html += `<th>${escapeHtml(col)}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+        } else {
+            // Строки данных
+            html += '<tr>';
+            cols.forEach(col => {
+                html += `<td>${formatText(col)}</td>`;
+            });
+            html += '</tr>';
+        }
+    }
+    
+    html += '</tbody></table></div>';
+    return html;
+}
+
+// Форматирование списка
+function formatList(listText, ordered = false) {
+    if (!listText || !listText.trim()) return '';
+    
+    const lines = listText.split('\n').filter(line => line.trim());
+    if (lines.length === 0) return '';
+    
+    const tag = ordered ? 'ol' : 'ul';
+    let html = `<${tag}>`;
+    
+    lines.forEach(line => {
+        // Убираем нумерацию или маркеры если есть
+        line = line.replace(/^[\d.]+[\s]*[-•*]?\s*/, '').replace(/^[-•*]\s*/, '');
+        if (line.trim()) {
+            html += `<li>${escapeHtml(line.trim())}</li>`;
+        }
+    });
+    
+    html += `</${tag}>`;
+    return html;
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatText(text) {
+    if (!text) return '';
+    return escapeHtml(text).replace(/\n/g, '<br>');
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return 'N/A';
+    try {
+        const date = new Date(dateStr);
+        return date.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch {
+        return dateStr;
+    }
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'published': '<span class="badge bg-success">✓ Опубликовано</span>',
+        'error': '<span class="badge bg-danger">⚠ Ошибка</span>',
+        'draft': '<span class="badge bg-warning text-dark">📝 Черновик</span>'
+    };
+    return badges[status] || '<span class="badge bg-secondary">' + status + '</span>';
+}
+</script>
+
+<style>
+.mnt-preview-content {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.mnt-preview-content h5 {
+    color: #3b82f6;
+    border-bottom: 2px solid #3b82f6;
+    padding-bottom: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.mnt-preview-content h6 {
+    color: #6366f1;
+    margin-top: 1rem;
+}
+</style>
 
 <style>
 .tag-badge {
