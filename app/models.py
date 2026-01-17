@@ -121,8 +121,6 @@ class MNTData(BaseModel):
     # Раздел 13: Требования к Заказчику
     customer_requirements_intro: Optional[str] = Field(None, description="Вводный текст к требованиям к Заказчику")
     customer_requirements_list: Optional[str] = Field(None, description="Список требований к Заказчику (нумерованный список)")
-    customer_requirements_note_intro: Optional[str] = Field(None, description="Вводный текст к примечанию о сроках доработки ППО")
-    customer_requirements_note_list: Optional[str] = Field(None, description="Список условий при задержке сроков (нумерованный список)")
     
     # Раздел 14: Материалы, подлежащие сдаче
     deliverables_intro: Optional[str] = Field(None, description="Вводный текст к материалам")

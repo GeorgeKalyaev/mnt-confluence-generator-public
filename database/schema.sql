@@ -20,7 +20,10 @@ CREATE TABLE IF NOT EXISTS mnt.documents (
     confluence_page_id INTEGER,
     confluence_page_url TEXT,
     last_publish_at TIMESTAMP,
-    last_error TEXT
+    last_error TEXT,
+    
+    -- Мягкое удаление (soft delete)
+    deleted_at TIMESTAMP NULL
 );
 
 -- Индекс для быстрого поиска по статусу
@@ -34,6 +37,9 @@ CREATE INDEX IF NOT EXISTS idx_documents_author ON mnt.documents(author);
 
 -- Индекс для поиска по Confluence page_id
 CREATE INDEX IF NOT EXISTS idx_documents_confluence_page_id ON mnt.documents(confluence_page_id);
+
+-- Индекс для мягкого удаления
+CREATE INDEX IF NOT EXISTS idx_documents_deleted_at ON mnt.documents(deleted_at);
 
 -- Функция для автоматического обновления updated_at
 CREATE OR REPLACE FUNCTION mnt.update_updated_at_column()

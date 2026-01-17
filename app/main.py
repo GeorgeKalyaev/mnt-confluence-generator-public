@@ -22,7 +22,6 @@ from app.models import MNTData, MNTDocument, MNTCreateRequest, MNTListResponse, 
 from app.db_operations import (
     create_mnt, get_mnt, update_mnt, list_mnt,
     update_confluence_info, set_error_status,
-    get_published_version_data,
     get_tags, create_tag, get_document_tags, set_document_tags,
     log_action, get_action_history,
     soft_delete_mnt, restore_mnt, get_mnt_with_deleted
@@ -281,34 +280,19 @@ async def edit_page(
         tags_in_data = data_json.get("tags", [])
         logger.info(f"EDIT_PAGE: Загрузка страницы редактирования МНТ {mnt_id}, теги в data_json: {tags_in_data} (тип: {type(tags_in_data)})")
         
-        # Проверяем, есть ли неопубликованные изменения
-        unpublished_changes = None
+        # Проверяем, есть ли неопубликованные изменения (упрощенная проверка по датам)
+        has_unpublished_changes = False
         if document.get("status") == "published" and document.get("confluence_page_id"):
             if document.get("last_publish_at") and document.get("updated_at"):
                 if document["updated_at"] > document["last_publish_at"]:
-                    # Есть неопубликованные изменения - сравниваем с версией на момент публикации
-                    published_version_data = get_published_version_data(
-                        db, mnt_id, document["last_publish_at"]
-                    )
-                    if published_version_data:
-                        unpublished_changes = compare_mnt_data(published_version_data, data_json)
-                        logger.debug(f"МНТ {mnt_id}: Найдено {len(unpublished_changes)} неопубликованных изменений. Измененные поля: {[c.get('field_name') for c in unpublished_changes[:5]]}")
-                    else:
-                        # Если версия не найдена, пытаемся использовать данные из action_history
-                        # или используем данные, которые были в момент публикации (если они сохранились)
-                        # Для упрощения - просто помечаем, что есть изменения, но без детального diff
-                        logger.warning(f"МНТ {mnt_id}: Версия на момент публикации не найдена. Нельзя показать детальный diff.")
-                        # Создаем список измененных полей, сравнивая с пустыми данными
-                        # Это не идеально, но лучше чем ничего
-                        unpublished_changes = []
+                    has_unpublished_changes = True
+                    logger.debug(f"МНТ {mnt_id}: Обнаружены неопубликованные изменения (updated_at > last_publish_at)")
                 else:
                     logger.debug(f"МНТ {mnt_id}: Нет неопубликованных изменений (updated_at <= last_publish_at)")
             else:
                 logger.debug(f"МНТ {mnt_id}: Отсутствует last_publish_at или updated_at")
         else:
             logger.debug(f"МНТ {mnt_id}: Статус не 'published' или нет confluence_page_id")
-        
-        logger.debug(f"Подготовка шаблона edit.html для МНТ {mnt_id}, unpublished_changes: {len(unpublished_changes) if unpublished_changes else 0} изменений")
         
         # Получаем параметры из query string, если не переданы напрямую
         success_message = success or request.query_params.get("success")
@@ -320,7 +304,7 @@ async def edit_page(
             "document": document,
             "data": data_json,
             "existing_attachments": existing_attachments,
-            "unpublished_changes": unpublished_changes,
+            "has_unpublished_changes": has_unpublished_changes,
             "success_message": success_message,
             "error_message": error_message,
             "warning_message": warning_message
