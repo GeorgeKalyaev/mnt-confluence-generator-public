@@ -337,8 +337,11 @@
         
         <h5 class="mt-2 mb-2">7.3.1 Компонентная архитектура</h5>
         <div class="mb-3">
-            <label for="component_architecture_text" class="form-label">Текст описания компонентной архитектуры (каждый компонент с новой строки)</label>
-            <textarea class="form-control" id="component_architecture_text" name="component_architecture_text" rows="6">{{ data.component_architecture_text if data else '' }}</textarea>
+            <label for="component_architecture_text" class="form-label">Текст описания компонентной архитектуры (каждый компонент с новой строки) <span class="text-danger">*</span></label>
+            <textarea class="form-control required-field" id="component_architecture_text" name="component_architecture_text" rows="6" required>{% if data and data.get('component_architecture_text') %}{{ data.component_architecture_text }}{% else %}Компонентная архитектура состоит из следующих частей:
+•-
+•-
+•-{% endif %}</textarea>
         </div>
         <div class="mb-3">
             <label for="component_architecture_image_file" class="form-label">Изображение компонентной архитектуры (Рисунок 1)</label>
@@ -559,8 +562,8 @@
 
         <h4 class="mt-3 mb-3" id="section-11-4">11.4 Описание работы эмуляторов</h4>
         <div class="mb-3">
-            <label for="emulators_description" class="form-label">Текст описания работы эмуляторов</label>
-            <textarea class="form-control" id="emulators_description" name="emulators_description" rows="4">{{ data.emulators_description if data else '' }}</textarea>
+            <label for="emulators_description" class="form-label">Текст описания работы эмуляторов <span class="text-danger">*</span></label>
+            <textarea class="form-control required-field" id="emulators_description" name="emulators_description" rows="4" required>{% if data and data.get('emulators_description') %}{{ data.emulators_description }}{% else %}В текущем проекте взаимодействие со внешними системами не рассматривается.{% endif %}</textarea>
         </div>
     </div>
 

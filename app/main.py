@@ -244,7 +244,9 @@ async def list_page(
         "confluence_not_configured": "Не удалось удалить МНТ: Confluence недоступен или не настроен. Проверьте настройки в файле .env. Удаление заблокировано, чтобы не допустить потери данных в Confluence.",
         "already_deleted": "МНТ уже удален.",
         "delete_failed": "Не удалось удалить МНТ. Попробуйте позже.",
-        "not_deleted": "МНТ не был удален."
+        "not_deleted": "МНТ не был удален.",
+        "duplicate_failed": "Не удалось продублировать МНТ. Попробуйте позже.",
+        "mnt_not_found": "МНТ не найден."
     }
     
     error_message = None
@@ -1873,6 +1875,92 @@ async def restore_mnt_endpoint(mnt_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Ошибка восстановления МНТ {mnt_id}: {e}", exc_info=True)
         return RedirectResponse(url=f"/mnt/trash?error=restore_failed&id={mnt_id}", status_code=303)
+
+
+@app.post("/mnt/{mnt_id}/duplicate", response_class=RedirectResponse)
+async def duplicate_mnt_endpoint(mnt_id: int, request: Request, db: Session = Depends(get_db)):
+    """Дублирование МНТ - создание копии как черновика"""
+    request_id = getattr(request.state, 'request_id', '-')
+    user_ip = getattr(request.state, 'user_ip', '-')
+    
+    try:
+        # Получаем оригинальный МНТ
+        original = get_mnt(db, mnt_id)
+        if not original:
+            return RedirectResponse(url="/mnt/list?error=mnt_not_found", status_code=303)
+        
+        log_user_action(
+            action=f"Дублирование МНТ {mnt_id}",
+            user="anonymous",
+            request_id=request_id,
+            user_ip=user_ip,
+            url=f"/mnt/{mnt_id}/duplicate"
+        )
+        
+        # Копируем данные из data_json, исключая историю изменений и лист согласования
+        original_data = original.get("data_json", {})
+        if not isinstance(original_data, dict):
+            original_data = {}
+        
+        # Создаем копию данных, исключая служебные поля
+        new_data = {}
+        for key, value in original_data.items():
+            # Не копируем историю изменений и лист согласования
+            if key not in ["history_changes_table", "approval_list_table"]:
+                new_data[key] = value
+        
+        # Изменяем название, добавляя " (копия)"
+        new_title = f"{original.get('title', 'МНТ')} (копия)"
+        new_data["title"] = new_title
+        
+        # Копируем project и author из оригинала
+        new_data["project"] = original.get("project", "")
+        new_data["author"] = original.get("author", "")
+        
+        # Сохраняем теги (они уже должны быть в data_json)
+        # Теги копируются автоматически, так как они в data_json
+        
+        # Копируем confluence_space и confluence_parent_id (но не page_id)
+        confluence_space = original.get("confluence_space")
+        confluence_parent_id = original.get("confluence_parent_id")
+        
+        # Создаем новый МНТ как черновик
+        result = create_mnt(
+            db=db,
+            data=new_data,
+            confluence_space=confluence_space or "TEST",
+            confluence_parent_id=confluence_parent_id
+        )
+        
+        new_mnt_id = result["id"]
+        
+        # Логируем действие
+        log_action(
+            db=db,
+            mnt_id=new_mnt_id,
+            user_name=original.get("author", "unknown"),
+            action_type="duplicate",
+            action_description=f"Создана копия МНТ из оригинала #{mnt_id}",
+            details={
+                "original_mnt_id": mnt_id,
+                "original_title": original.get("title"),
+                "new_title": new_title
+            }
+        )
+        
+        log_mnt_operation(
+            operation="duplicate",
+            mnt_id=new_mnt_id,
+            details=f"Скопирован из МНТ {mnt_id}",
+            request_id=request_id,
+            user_ip=user_ip
+        )
+        
+        return RedirectResponse(url=f"/mnt/list?success=duplicated&new_id={new_mnt_id}", status_code=303)
+        
+    except Exception as e:
+        logger.error(f"Ошибка дублирования МНТ {mnt_id}: {e}", exc_info=True)
+        return RedirectResponse(url=f"/mnt/list?error=duplicate_failed&id={mnt_id}", status_code=303)
 
 
 @app.get("/mnt/trash", response_class=HTMLResponse)
