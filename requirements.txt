@@ -1,10 +1,25 @@
-fastapi
-uvicorn[standard]
-jinja2
-python-dotenv
-psycopg2-binary
-sqlalchemy
-pydantic
-pydantic-settings
-httpx
-python-multipart
+# Веб-фреймворк и сервер
+fastapi==0.128.0
+uvicorn[standard]==0.40.0
+
+# Шаблонизатор
+jinja2==3.1.6
+
+# Работа с переменными окружения
+python-dotenv==1.2.1
+
+# PostgreSQL драйвер
+psycopg2-binary==2.9.11
+
+# ORM для работы с БД
+sqlalchemy==2.0.45
+
+# Валидация данных и настройки
+pydantic==2.12.5
+pydantic-settings==2.12.0
+
+# HTTP клиент для Confluence API
+httpx==0.28.1
+
+# Обработка форм (multipart/form-data)
+python-multipart==0.0.21
