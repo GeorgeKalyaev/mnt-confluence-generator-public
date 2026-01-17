@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS mnt.documents (
     confluence_page_url TEXT,
     last_publish_at TIMESTAMP,
     last_error TEXT,
+    deleted_at TIMESTAMP NULL
+);
     
     -- Мягкое удаление (soft delete)
     deleted_at TIMESTAMP NULL
@@ -37,6 +39,19 @@ CREATE INDEX IF NOT EXISTS idx_documents_author ON mnt.documents(author);
 
 -- Индекс для поиска по Confluence page_id
 CREATE INDEX IF NOT EXISTS idx_documents_confluence_page_id ON mnt.documents(confluence_page_id);
+-- Индекс для фильтрации по deleted_at (soft delete) - частичный индекс для не удаленных
+CREATE INDEX IF NOT EXISTS idx_documents_deleted_at ON mnt.documents(deleted_at) WHERE deleted_at IS NULL;
+
+-- Индексы для сортировки (часто используются в ORDER BY)
+CREATE INDEX IF NOT EXISTS idx_documents_created_at ON mnt.documents(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_documents_updated_at ON mnt.documents(updated_at DESC);
+
+-- GIN индекс для быстрого поиска по JSONB содержимому (теги, поиск по содержимому)
+CREATE INDEX IF NOT EXISTS idx_documents_data_json_gin ON mnt.documents USING GIN (data_json);
+
+-- Составной индекс для частых запросов: фильтр по статусу и deleted_at с сортировкой по created_at
+CREATE INDEX IF NOT EXISTS idx_documents_status_deleted_created ON mnt.documents(status, deleted_at, created_at DESC) WHERE deleted_at IS NULL;
+
 
 -- Индекс для мягкого удаления
 CREATE INDEX IF NOT EXISTS idx_documents_deleted_at ON mnt.documents(deleted_at);
