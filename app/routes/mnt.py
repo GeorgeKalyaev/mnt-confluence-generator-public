@@ -390,11 +390,30 @@ async def edit_page(
 @router.get("/{mnt_id}/view", response_class=JSONResponse)
 async def view_json(mnt_id: int, db: Session = Depends(get_db)):
     """Просмотр данных МНТ в JSON формате"""
-    document = get_mnt(db, mnt_id)
-    if not document:
-        raise HTTPException(status_code=404, detail="МНТ не найден")
-    
-    # Преобразуем datetime объекты в строки для JSON сериализации
+    try:
+        document = get_mnt(db, mnt_id)
+        if not document:
+            raise HTTPException(status_code=404, detail="МНТ не найден")
+        
+        # Получаем теги документа
+        tags = get_document_tags(db, mnt_id)
+        document['tags'] = [{'name': tag.name} for tag in tags] if tags else []
+        
+        # Преобразуем datetime объекты в строки для JSON сериализации
+        if document.get('created_at'):
+            document['created_at'] = document['created_at'].isoformat() if hasattr(document['created_at'], 'isoformat') else str(document['created_at'])
+        if document.get('updated_at'):
+            document['updated_at'] = document['updated_at'].isoformat() if hasattr(document['updated_at'], 'isoformat') else str(document['updated_at'])
+        if document.get('last_publish_at'):
+            document['last_publish_at'] = document['last_publish_at'].isoformat() if hasattr(document['last_publish_at'], 'isoformat') else str(document['last_publish_at'])
+        
+        return JSONResponse(content=document)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка при получении данных МНТ {mnt_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка при загрузке данных МНТ: {str(e)}")
+
 @router.post("/create")
 async def handle_create_form(
     request: Request,
