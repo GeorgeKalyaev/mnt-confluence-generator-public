@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # PostgreSQL база данных
+  postgres:
+    image: postgres:15-alpine
+    container_name: mnt-postgres
+    environment:
+      POSTGRES_DB: mnt_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Приложение МНТ Confluence Generator
+  app:
+    build: .
+    container_name: mnt-app
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: mnt_db
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      CONFLUENCE_URL: ${CONFLUENCE_URL:-}
+      CONFLUENCE_EMAIL: ${CONFLUENCE_EMAIL:-}
+      CONFLUENCE_API_TOKEN: ${CONFLUENCE_API_TOKEN:-}
+      CONFLUENCE_USERNAME: ${CONFLUENCE_USERNAME:-}
+      CONFLUENCE_PASSWORD: ${CONFLUENCE_PASSWORD:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-text}
+      LOG_SERVICE_NAME: mnt-confluence-generator
+      LOG_ENVIRONMENT: ${LOG_ENVIRONMENT:-production}
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Confluence (опционально, для тестирования)
+  confluence:
+    image: atlassian/confluence-server:8.7.1
+    container_name: confluence-test
+    ports:
+      - "8090:8090"
+    environment:
+      ATL_TOMCAT_MGMTPORT: 8091
+      ATL_TOMCAT_PORT: 8090
+      ATL_TOMCAT_CONTEXTPATH: /
+    volumes:
+      - confluence-data:/var/atlassian/application-data/confluence
+    restart: unless-stopped
+    profiles:
+      - confluence
+
+volumes:
+  postgres-data:
+    driver: local
+  confluence-data:
+    driver: local

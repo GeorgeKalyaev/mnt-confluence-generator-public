@@ -26,7 +26,9 @@ from app.db_operations import (
     log_action, get_action_history,
     soft_delete_mnt, restore_mnt, get_mnt_with_deleted,
     create_document_version, get_latest_version_from_history, increment_version_number,
-    get_document_versions, get_document_version
+    get_document_versions, get_document_version,
+    get_unfinished_drafts, get_documents_needing_update,
+    log_field_change, get_field_history, get_field_names_for_mnt
 )
 from app.version_diff import compare_versions
 from app.diff_tracker import compare_mnt_data
@@ -38,6 +40,8 @@ from app.logger import (
     log_user_action, log_request, logger, generate_request_id
 )
 from app.export import export_to_html, export_to_text
+from app.completeness_checker import check_document_completeness
+from app.tag_templates import get_template_data_for_tags, get_available_templates, apply_template_to_data
 from datetime import datetime
 from fastapi.responses import Response
 import logging
@@ -1794,6 +1798,72 @@ async def export_mnt(mnt_id: int, format: str, db: Session = Depends(get_db)):
     except Exception as e:
         log_error(e, f"Ошибка экспорта МНТ #{mnt_id} в формате {format}")
         raise HTTPException(status_code=500, detail=f"Ошибка экспорта: {str(e)}")
+
+
+@app.get("/api/mnt/{mnt_id}/completeness")
+async def get_mnt_completeness(mnt_id: int, db: Session = Depends(get_db)):
+    """Получить информацию о полноте заполнения МНТ"""
+    document = get_mnt(db, mnt_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="МНТ не найден")
+    
+    try:
+        data = document.get("data_json", {})
+        completeness = check_document_completeness(data)
+        return JSONResponse(content=completeness)
+    except Exception as e:
+        log_error(e, f"Ошибка проверки полноты МНТ #{mnt_id}")
+        raise HTTPException(status_code=500, detail=f"Ошибка проверки полноты: {str(e)}")
+
+
+@app.post("/api/mnt/completeness")
+async def check_completeness_from_data(request: Request, db: Session = Depends(get_db)):
+    """Проверить полноту заполнения на основе переданных данных формы"""
+    try:
+        form_data = await request.form()
+        data = {}
+        
+        # Собираем все данные из формы
+        for key, value in form_data.items():
+            if key not in ["confluence_space", "confluence_parent_id", "publish"]:
+                data[key] = value
+        
+        completeness = check_document_completeness(data)
+        return JSONResponse(content=completeness)
+    except Exception as e:
+        log_error(e, "Ошибка проверки полноты из данных формы")
+        raise HTTPException(status_code=500, detail=f"Ошибка проверки полноты: {str(e)}")
+
+
+@app.get("/api/tag-templates")
+async def list_tag_templates():
+    """Получить список всех доступных шаблонов для тегов"""
+    try:
+        templates = get_available_templates()
+        return JSONResponse(content=templates)
+    except Exception as e:
+        log_error(e, "Ошибка получения списка шаблонов тегов")
+        raise HTTPException(status_code=500, detail=f"Ошибка получения шаблонов: {str(e)}")
+
+
+@app.post("/api/tag-templates/apply")
+async def apply_tag_templates(request: Request):
+    """Применить шаблоны данных на основе тегов"""
+    try:
+        body = await request.json()
+        tags = body.get("tags", [])
+        current_data = body.get("current_data", {})
+        overwrite = body.get("overwrite", False)
+        
+        if not tags:
+            return JSONResponse(content=current_data)
+        
+        # Применяем шаблоны
+        updated_data = apply_template_to_data(current_data, tags, overwrite)
+        return JSONResponse(content=updated_data)
+    except Exception as e:
+        log_error(e, "Ошибка применения шаблонов тегов")
+        raise HTTPException(status_code=500, detail=f"Ошибка применения шаблонов: {str(e)}")
 
 
 

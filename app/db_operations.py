@@ -2,7 +2,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List, Optional, Dict, Any, Tuple
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import re
 from app.models import MNTDocument, MNTStatus
@@ -827,3 +827,291 @@ def get_document_version(db: Session, version_id: int) -> Optional[dict]:
         "created_at": row[13],
         "created_by": row[14]
     }
+
+
+def get_unfinished_drafts(db: Session, days: int = 7) -> List[dict]:
+    """
+    Получить список незавершенных МНТ (черновики старше N дней)
+    
+    Args:
+        db: Сессия БД
+        days: Количество дней (по умолчанию 7)
+    
+    Returns:
+        Список МНТ документов
+    """
+    cutoff_date = datetime.now() - timedelta(days=days)
+    
+    query = text("""
+        SELECT id, title, project, author, created_at, updated_at, status, data_json,
+               confluence_space, confluence_parent_id, confluence_page_id, confluence_page_url,
+               last_publish_at, last_error
+        FROM mnt.documents
+        WHERE status = 'draft'
+          AND deleted_at IS NULL
+          AND updated_at < :cutoff_date
+        ORDER BY updated_at ASC
+    """)
+    
+    result = db.execute(query, {"cutoff_date": cutoff_date})
+    rows = result.fetchall()
+    
+    documents = []
+    for row in rows:
+        data_json_value = row[7]
+        if isinstance(data_json_value, dict):
+            data_json_dict = data_json_value
+        elif isinstance(data_json_value, str):
+            try:
+                data_json_dict = json.loads(data_json_value)
+            except:
+                data_json_dict = {}
+        else:
+            data_json_dict = {}
+        
+        documents.append({
+            "id": row[0],
+            "title": row[1],
+            "project": row[2],
+            "author": row[3],
+            "created_at": row[4],
+            "updated_at": row[5],
+            "status": row[6],
+            "data_json": data_json_dict,
+            "confluence_space": row[8],
+            "confluence_parent_id": row[9],
+            "confluence_page_id": row[10],
+            "confluence_page_url": row[11],
+            "last_publish_at": row[12],
+            "last_error": row[13]
+        })
+    
+    return documents
+
+
+def get_documents_needing_update(db: Session, days: int = 30) -> List[dict]:
+    """
+    Получить список МНТ, требующих обновления (опубликованные, но не обновлялись более N дней)
+    
+    Args:
+        db: Сессия БД
+        days: Количество дней (по умолчанию 30)
+    
+    Returns:
+        Список МНТ документов
+    """
+    cutoff_date = datetime.now() - timedelta(days=days)
+    
+    query = text("""
+        SELECT id, title, project, author, created_at, updated_at, status, data_json,
+               confluence_space, confluence_parent_id, confluence_page_id, confluence_page_url,
+               last_publish_at, last_error
+        FROM mnt.documents
+        WHERE status = 'published'
+          AND deleted_at IS NULL
+          AND confluence_page_id IS NOT NULL
+          AND (
+              last_publish_at IS NULL 
+              OR last_publish_at < :cutoff_date
+              OR updated_at > last_publish_at
+          )
+        ORDER BY updated_at DESC
+    """)
+    
+    result = db.execute(query, {"cutoff_date": cutoff_date})
+    rows = result.fetchall()
+    
+    documents = []
+    for row in rows:
+        data_json_value = row[7]
+        if isinstance(data_json_value, dict):
+            data_json_dict = data_json_value
+        elif isinstance(data_json_value, str):
+            try:
+                data_json_dict = json.loads(data_json_value)
+            except:
+                data_json_dict = {}
+        else:
+            data_json_dict = {}
+        
+        documents.append({
+            "id": row[0],
+            "title": row[1],
+            "project": row[2],
+            "author": row[3],
+            "created_at": row[4],
+            "updated_at": row[5],
+            "status": row[6],
+            "data_json": data_json_dict,
+            "confluence_space": row[8],
+            "confluence_parent_id": row[9],
+            "confluence_page_id": row[10],
+            "confluence_page_url": row[11],
+            "last_publish_at": row[12],
+            "last_error": row[13]
+        })
+    
+    return documents
+
+
+def log_field_change(
+    db: Session,
+    mnt_id: int,
+    field_name: str,
+    field_path: str,
+    old_value: Any,
+    new_value: Any,
+    changed_by: str,
+    change_type: str = "update",
+    description: Optional[str] = None,
+    document_version_id: Optional[int] = None
+) -> int:
+    """
+    Записать изменение поля в историю
+    
+    Args:
+        db: Сессия БД
+        mnt_id: ID МНТ
+        field_name: Название поля
+        field_path: Путь к полю (например: "title", "data_json.introduction_text")
+        old_value: Старое значение
+        new_value: Новое значение
+        changed_by: Автор изменения
+        change_type: Тип изменения (create, update, delete)
+        description: Описание изменения
+        document_version_id: ID версии документа (опционально)
+    
+    Returns:
+        ID созданной записи
+    """
+    # Преобразуем значения в строки для хранения
+    if isinstance(old_value, (dict, list)):
+        old_value_str = json.dumps(old_value, ensure_ascii=False)
+    else:
+        old_value_str = str(old_value) if old_value is not None else None
+    
+    if isinstance(new_value, (dict, list)):
+        new_value_str = json.dumps(new_value, ensure_ascii=False)
+    else:
+        new_value_str = str(new_value) if new_value is not None else None
+    
+    query = text("""
+        INSERT INTO mnt.field_history 
+        (mnt_id, field_name, field_path, old_value, new_value, changed_by, change_type, description, document_version_id)
+        VALUES (:mnt_id, :field_name, :field_path, :old_value, :new_value, :changed_by, :change_type, :description, :document_version_id)
+        RETURNING id
+    """)
+    
+    result = db.execute(query, {
+        "mnt_id": mnt_id,
+        "field_name": field_name,
+        "field_path": field_path,
+        "old_value": old_value_str,
+        "new_value": new_value_str,
+        "changed_by": changed_by,
+        "change_type": change_type,
+        "description": description,
+        "document_version_id": document_version_id
+    })
+    db.commit()
+    
+    row = result.fetchone()
+    return row[0] if row else None
+
+
+def get_field_history(
+    db: Session,
+    mnt_id: int,
+    field_name: Optional[str] = None,
+    limit: int = 100
+) -> List[dict]:
+    """
+    Получить историю изменений полей МНТ
+    
+    Args:
+        db: Сессия БД
+        mnt_id: ID МНТ
+        field_name: Название поля (опционально, если None - все поля)
+        limit: Максимум записей
+    
+    Returns:
+        Список записей истории
+    """
+    if field_name:
+        query = text("""
+            SELECT id, mnt_id, field_name, field_path, old_value, new_value,
+                   changed_by, changed_at, change_type, description, document_version_id
+            FROM mnt.field_history
+            WHERE mnt_id = :mnt_id AND field_name = :field_name
+            ORDER BY changed_at DESC
+            LIMIT :limit
+        """)
+        params = {"mnt_id": mnt_id, "field_name": field_name, "limit": limit}
+    else:
+        query = text("""
+            SELECT id, mnt_id, field_name, field_path, old_value, new_value,
+                   changed_by, changed_at, change_type, description, document_version_id
+            FROM mnt.field_history
+            WHERE mnt_id = :mnt_id
+            ORDER BY changed_at DESC
+            LIMIT :limit
+        """)
+        params = {"mnt_id": mnt_id, "limit": limit}
+    
+    result = db.execute(query, params)
+    rows = result.fetchall()
+    
+    history = []
+    for row in rows:
+        # Пытаемся распарсить JSON значения
+        old_value = row[4]
+        if old_value:
+            try:
+                old_value = json.loads(old_value)
+            except:
+                pass
+        
+        new_value = row[5]
+        if new_value:
+            try:
+                new_value = json.loads(new_value)
+            except:
+                pass
+        
+        history.append({
+            "id": row[0],
+            "mnt_id": row[1],
+            "field_name": row[2],
+            "field_path": row[3],
+            "old_value": old_value,
+            "new_value": new_value,
+            "changed_by": row[6],
+            "changed_at": row[7],
+            "change_type": row[8],
+            "description": row[9],
+            "document_version_id": row[10]
+        })
+    
+    return history
+
+
+def get_field_names_for_mnt(db: Session, mnt_id: int) -> List[str]:
+    """
+    Получить список всех полей, которые были изменены для МНТ
+    
+    Args:
+        db: Сессия БД
+        mnt_id: ID МНТ
+    
+    Returns:
+        Список уникальных названий полей
+    """
+    query = text("""
+        SELECT DISTINCT field_name
+        FROM mnt.field_history
+        WHERE mnt_id = :mnt_id
+        ORDER BY field_name
+    """)
+    
+    result = db.execute(query, {"mnt_id": mnt_id})
+    return [row[0] for row in result.fetchall()]

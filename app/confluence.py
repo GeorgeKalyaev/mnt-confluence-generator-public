@@ -212,17 +212,18 @@ class ConfluenceClient:
                 "version": result["version"]["number"]
             }
     
-    async def get_page(self, page_id: int) -> Dict[str, Any]:
+    async def get_page(self, page_id: int, expand: str = "version") -> Dict[str, Any]:
         """
         Получение информации о странице (включая версию)
         
         Args:
             page_id: ID страницы
+            expand: Какие поля расширять (version, body.storage, etc.)
         
         Returns:
             Словарь с информацией о странице
         """
-        url = f"{self.base_url}/rest/api/content/{page_id}?expand=version"
+        url = f"{self.base_url}/rest/api/content/{page_id}?expand={expand}"
         
         headers = {
             self.auth[0]: self.auth[1]
@@ -233,6 +234,43 @@ class ConfluenceClient:
             response.raise_for_status()
             
             return response.json()
+    
+    async def get_page_content(self, page_id: int) -> Optional[str]:
+        """
+        Получение содержимого страницы в формате Storage
+        
+        Args:
+            page_id: ID страницы
+        
+        Returns:
+            Содержимое страницы в формате Storage или None при ошибке
+        """
+        try:
+            page_data = await self.get_page(page_id, expand="version,body.storage")
+            body = page_data.get("body", {})
+            storage = body.get("storage", {})
+            return storage.get("value", "")
+        except Exception as e:
+            logger.error(f"Ошибка получения содержимого страницы {page_id}: {e}")
+            return None
+    
+    async def get_page_version_info(self, page_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Получение информации о версии страницы
+        
+        Args:
+            page_id: ID страницы
+        
+        Returns:
+            Словарь с информацией о версии: {number, when, friendlyWhen, message, by} или None
+        """
+        try:
+            page_data = await self.get_page(page_id, expand="version")
+            version_info = page_data.get("version", {})
+            return version_info
+        except Exception as e:
+            logger.error(f"Ошибка получения версии страницы {page_id}: {e}")
+            return None
     
     async def upload_attachment(
         self,
