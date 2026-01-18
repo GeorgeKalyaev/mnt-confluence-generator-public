@@ -1207,10 +1207,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Отслеживаем ввод автора (добавляем/обновляем строку при вводе)
+    // Отслеживаем ввод автора (добавляем/обновляем строку при потере фокуса, а не при каждом символе)
     if (authorInput) {
-        authorInput.addEventListener('input', function() {
-            addOrUpdateNewHistoryRow();
+        authorInput.addEventListener('blur', function() {
+            if (authorInput.value.trim()) {
+                addOrUpdateNewHistoryRow();
+            }
         });
     }
     
@@ -4043,17 +4045,17 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         const dragDropInstances = {};
         
-        // 1. История изменений
-        dragDropInstances.historyChanges = initDragDropForTable(
-            'history_changes_visual_table',
-            'history_changes_tbody',
-            function() {
-                if (typeof updateHistoryChangesHiddenField === 'function') {
-                    updateHistoryChangesHiddenField();
-                }
-            },
-            'add_history_row_btn'
-        );
+        // 1. История изменений - drag & drop отключен (записи нельзя перетаскивать)
+        // dragDropInstances.historyChanges = initDragDropForTable(
+        //     'history_changes_visual_table',
+        //     'history_changes_tbody',
+        //     function() {
+        //         if (typeof updateHistoryChangesHiddenField === 'function') {
+        //             updateHistoryChangesHiddenField();
+        //         }
+        //     },
+        //     'add_history_row_btn'
+        // );
         
         // 2. Лист согласования
         dragDropInstances.approvalList = initDragDropForTable(

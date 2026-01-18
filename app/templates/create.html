@@ -1003,12 +1003,11 @@ document.addEventListener('DOMContentLoaded', function() {
         updateHiddenField();
     }
     
-    // Обновляем таблицу при изменении автора
-    authorInput.addEventListener('input', function() {
-        updateHistoryTable();
-    });
-    authorInput.addEventListener('change', function() {
-        updateHistoryTable();
+    // Обновляем таблицу при изменении автора (только при потере фокуса, а не при каждом символе)
+    authorInput.addEventListener('blur', function() {
+        if (authorInput.value.trim()) {
+            updateHistoryTable();
+        }
     });
     
     // Инициализируем таблицу при загрузке, если автор уже есть (например, из автозаполнения браузера)
@@ -3853,17 +3852,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Инициализируем drag & drop для всех таблиц
     const dragDropInstances = {};
     
-    // 1. История изменений
-    dragDropInstances.historyChanges = initDragDropForTable(
-        'history_changes_visual_table',
-        'history_changes_tbody',
-        function() {
-            if (typeof updateHistoryChangesHiddenField === 'function') {
-                updateHistoryChangesHiddenField();
-            }
-        },
-        'add_history_row_btn'
-    );
+    // 1. История изменений - drag & drop отключен (записи нельзя перетаскивать)
+    // dragDropInstances.historyChanges = initDragDropForTable(
+    //     'history_changes_visual_table',
+    //     'history_changes_tbody',
+    //     function() {
+    //         if (typeof updateHistoryChangesHiddenField === 'function') {
+    //             updateHistoryChangesHiddenField();
+    //         }
+    //     },
+    //     'add_history_row_btn'
+    // );
     
     // 2. Лист согласования
     dragDropInstances.approvalList = initDragDropForTable(
