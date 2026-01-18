@@ -113,24 +113,21 @@
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="project_name" class="form-label">Название проекта <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="project_name" name="project_name" required 
-                       value="{{ data.project_name if data else '' }}">
+                <textarea class="form-control" id="project_name" name="project_name" rows="2" required>{{ data.project_name if data else '' }}</textarea>
             </div>
             <div class="col-md-6 mb-3">
                 <label for="organization_name" class="form-label">Название компании <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="organization_name" name="organization_name" required 
-                       value="{{ data.organization_name if data else 'УК «Первая»' }}">
+                <textarea class="form-control" id="organization_name" name="organization_name" rows="2" required>{{ data.organization_name if data else 'УК «Первая»' }}</textarea>
             </div>
         </div>
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="system_version" class="form-label">Версия системы <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="system_version" name="system_version" required 
-                       value="{{ data.system_version if data else '' }}" placeholder="Например: 1.0">
+                <textarea class="form-control" id="system_version" name="system_version" rows="2" required placeholder="Например: 1.0">{{ data.system_version if data else '' }}</textarea>
             </div>
             <div class="col-md-6 mb-3">
                 <label for="author" class="form-label">Автор (для истории изменений) <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="author" name="author" required placeholder="Укажите ФИО автора (Фамилия И.О.)">
+                <textarea class="form-control" id="author" name="author" rows="2" required placeholder="Укажите ФИО автора (Фамилия И.О.)">{{ data.author if data else '' }}</textarea>
             </div>
         </div>
     </div>
@@ -1047,20 +1044,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm abbreviation-name" 
+                <textarea class="form-control form-control-sm abbreviation-name" 
                        name="abbreviation_name[]" 
-                       value="${rowData.name || ''}"
+                       rows="2"
                        placeholder="Например: МНТ"
-                       required>
+                       required>${rowData.name || ''}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm abbreviation-description" 
+                <textarea class="form-control form-control-sm abbreviation-description" 
                        name="abbreviation_description[]" 
-                       value="${rowData.description || ''}"
+                       rows="2"
                        placeholder="Методика нагрузочного тестирования"
-                       required>
+                       required>${rowData.description || ''}</textarea>
             </td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" 
@@ -1201,12 +1196,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         row.innerHTML = `
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm terminology-term" 
+                <textarea class="form-control form-control-sm terminology-term" 
                        name="terminology_term[]" 
-                       value="${termValue}"
+                       rows="2"
                        placeholder="Например: Нагрузочное тестирование"
-                       required>
+                       required>${termValue}</textarea>
             </td>
             <td>
                 <textarea class="form-control form-control-sm terminology-definition" 
@@ -1352,28 +1346,25 @@ document.addEventListener('DOMContentLoaded', function() {
         
         row.innerHTML = `
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm risk-risk" 
+                <textarea class="form-control form-control-sm risk-risk" 
                        name="risk_risk[]" 
-                       value="${(rowData.risk || '').replace(/"/g, '&quot;')}"
+                       rows="2"
                        placeholder="Например: При подготовке СНТ возможно изменение функционала"
-                       required>
+                       required>${(rowData.risk || '').replace(/"/g, '&quot;')}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm risk-probability" 
+                <textarea class="form-control form-control-sm risk-probability" 
                        name="risk_probability[]" 
-                       value="${(rowData.probability || '').replace(/"/g, '&quot;')}"
+                       rows="2"
                        placeholder="Например: Средняя"
-                       required>
+                       required>${(rowData.probability || '').replace(/"/g, '&quot;')}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm risk-impact" 
+                <textarea class="form-control form-control-sm risk-impact" 
                        name="risk_impact[]" 
-                       value="${(rowData.impact || '').replace(/"/g, '&quot;')}"
+                       rows="2"
                        placeholder="Например: Сроки НТ"
-                       required>
+                       required>${(rowData.impact || '').replace(/"/g, '&quot;')}</textarea>
             </td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" 
@@ -1514,36 +1505,32 @@ document.addEventListener('DOMContentLoaded', function() {
         
         row.innerHTML = `
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm stand-system" 
+                <textarea class="form-control form-control-sm stand-system" 
                        name="stand_system[]" 
-                       value="${(rowData.system || '').replace(/"/g, '&quot;')}"
+                       rows="2"
                        placeholder="Например: Кластер из трёх нод"
-                       required>
+                       required>${(rowData.system || '').replace(/"/g, '&quot;')}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm stand-parameter" 
+                <textarea class="form-control form-control-sm stand-parameter" 
                        name="stand_parameter[]" 
-                       value="${(rowData.parameter || '').replace(/"/g, '&quot;')}"
+                       rows="2"
                        placeholder="Например: Имена серверов"
-                       required>
+                       required>${(rowData.parameter || '').replace(/"/g, '&quot;')}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm stand-test-value" 
+                <textarea class="form-control form-control-sm stand-test-value" 
                        name="stand_test_value[]" 
-                       value="${(rowData.test_value || '').replace(/"/g, '&quot;')}"
+                       rows="2"
                        placeholder="Например: site-dbapp-lt-01"
-                       required>
+                       required>${(rowData.test_value || '').replace(/"/g, '&quot;')}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm stand-prod-value" 
+                <textarea class="form-control form-control-sm stand-prod-value" 
                        name="stand_prod_value[]" 
-                       value="${(rowData.prod_value || '').replace(/"/g, '&quot;')}"
+                       rows="2"
                        placeholder="Например: Site-dbapp-p-05"
-                       required>
+                       required>${(rowData.prod_value || '').replace(/"/g, '&quot;')}</textarea>
             </td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" 
@@ -2096,28 +2083,25 @@ document.addEventListener('DOMContentLoaded', function() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm database-prep-schema-table" 
+                <textarea class="form-control form-control-sm database-prep-schema-table" 
                        name="database_prep_schema_table[]" 
-                       value="${rowData.schema_table || ''}"
+                       rows="2"
                        placeholder="Например: public.users"
-                       required>
+                       required>${rowData.schema_table || ''}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm database-prep-current-rows" 
+                <textarea class="form-control form-control-sm database-prep-current-rows" 
                        name="database_prep_current_rows[]" 
-                       value="${rowData.current_rows || ''}"
+                       rows="2"
                        placeholder="Например: 1000000"
-                       required>
+                       required>${rowData.current_rows || ''}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm database-prep-growth-per-day" 
+                <textarea class="form-control form-control-sm database-prep-growth-per-day" 
                        name="database_prep_growth_per_day[]" 
-                       value="${rowData.growth_per_day || ''}"
+                       rows="2"
                        placeholder="Например: 1000"
-                       required>
+                       required>${rowData.growth_per_day || ''}</textarea>
             </td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" 
@@ -2255,20 +2239,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm load-profile-page-name" 
+                <textarea class="form-control form-control-sm load-profile-page-name" 
                        name="load_profile_page_name[]" 
-                       value="${rowData.page_name || ''}"
+                       rows="2"
                        placeholder="Название страницы"
-                       required>
+                       required>${rowData.page_name || ''}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm load-profile-intensity" 
+                <textarea class="form-control form-control-sm load-profile-intensity" 
                        name="load_profile_intensity[]" 
-                       value="${rowData.intensity || ''}"
+                       rows="2"
                        placeholder="Интенсивность, операций/минута"
-                       required>
+                       required>${rowData.intensity || ''}</textarea>
             </td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" 
@@ -2403,20 +2385,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm use-scenario-steps" 
+                <textarea class="form-control form-control-sm use-scenario-steps" 
                        name="use_scenario_steps[]" 
-                       value="${rowData.steps || ''}"
+                       rows="2"
                        placeholder="Шаги сценария"
-                       required>
+                       required>${rowData.steps || ''}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm use-scenario-intensity" 
+                <textarea class="form-control form-control-sm use-scenario-intensity" 
                        name="use_scenario_intensity[]" 
-                       value="${rowData.intensity || ''}"
+                       rows="2"
                        placeholder="Интенсивность, операций/минута"
-                       required>
+                       required>${rowData.intensity || ''}</textarea>
             </td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" 
@@ -2551,27 +2531,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm monitoring-tool-name" 
+                <textarea class="form-control form-control-sm monitoring-tool-name" 
                        name="monitoring_tool_name[]" 
-                       value="${rowData.name || ''}"
+                       rows="2"
                        placeholder="Например: Grafana"
-                       required>
+                       required>${rowData.name || ''}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm monitoring-tool-role" 
+                <textarea class="form-control form-control-sm monitoring-tool-role" 
                        name="monitoring_tool_role[]" 
-                       value="${rowData.role || ''}"
+                       rows="2"
                        placeholder="Роль инструмента"
-                       required>
+                       required>${rowData.role || ''}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm monitoring-tool-endpoint" 
+                <textarea class="form-control form-control-sm monitoring-tool-endpoint" 
                        name="monitoring_tool_endpoint[]" 
-                       value="${rowData.endpoint || ''}"
-                       placeholder="Эндпоинт (URI)">
+                       rows="2"
+                       placeholder="Эндпоинт (URI)">${rowData.endpoint || ''}</textarea>
             </td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" 
@@ -3109,20 +3086,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm deliverable-document" 
+                <textarea class="form-control form-control-sm deliverable-document" 
                        name="deliverable_document[]" 
-                       value="${rowData.document || ''}"
+                       rows="2"
                        placeholder="Документ"
-                       required>
+                       required>${rowData.document || ''}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm deliverable-activity" 
+                <textarea class="form-control form-control-sm deliverable-activity" 
                        name="deliverable_activity[]" 
-                       value="${rowData.activity || ''}"
+                       rows="2"
                        placeholder="Подготавливается в результате деятельности"
-                       required>
+                       required>${rowData.activity || ''}</textarea>
             </td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" class="btn btn-sm btn-danger remove-deliverable-row" title="Удалить строку">
@@ -3245,20 +3220,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm deliverable-working-doc-document" 
+                <textarea class="form-control form-control-sm deliverable-working-doc-document" 
                        name="deliverable_working_doc_document[]" 
-                       value="${rowData.document || ''}"
+                       rows="2"
                        placeholder="Документ"
-                       required>
+                       required>${rowData.document || ''}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm deliverable-working-doc-activity" 
+                <textarea class="form-control form-control-sm deliverable-working-doc-activity" 
                        name="deliverable_working_doc_activity[]" 
-                       value="${rowData.activity || ''}"
+                       rows="2"
                        placeholder="Подготавливается в результате деятельности"
-                       required>
+                       required>${rowData.activity || ''}</textarea>
             </td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" class="btn btn-sm btn-danger remove-deliverable-working-doc-row" title="Удалить строку">
@@ -3402,27 +3375,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 <input type="hidden" class="contact-number" name="contact_number[]" value="${rowNumber}">
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm contact-fio" 
+                <textarea class="form-control form-control-sm contact-fio" 
                        name="contact_fio[]" 
-                       value="${rowData.fio || ''}"
+                       rows="2"
                        placeholder="ФИО"
-                       required>
+                       required>${rowData.fio || ''}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm contact-responsibility" 
+                <textarea class="form-control form-control-sm contact-responsibility" 
                        name="contact_responsibility[]" 
-                       value="${rowData.responsibility || ''}"
+                       rows="2"
                        placeholder="Сфера ответственности"
-                       required>
+                       required>${rowData.responsibility || ''}</textarea>
             </td>
             <td>
-                <input type="text" 
-                       class="form-control form-control-sm contact-contacts" 
+                <textarea class="form-control form-control-sm contact-contacts" 
                        name="contact_contacts[]" 
-                       value="${rowData.contacts || ''}"
-                       placeholder="Контакты">
+                       rows="2"
+                       placeholder="Контакты">${rowData.contacts || ''}</textarea>
             </td>
             <td style="text-align: center; vertical-align: middle;">
                 <button type="button" class="btn btn-sm btn-danger remove-contact-row" title="Удалить строку">
