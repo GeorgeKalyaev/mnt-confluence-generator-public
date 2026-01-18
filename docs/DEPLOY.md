@@ -19,30 +19,34 @@
    cd mnt-confluence-generator
    ```
 
-2. **Создайте файл `.env` с настройками:**
-   ```env
-   # База данных (используются значения из docker-compose по умолчанию)
-   DATABASE_HOST=postgres
-   DATABASE_PORT=5432
-   DATABASE_NAME=mnt_db
-   DATABASE_USER=postgres
-   DATABASE_PASSWORD=postgres
+2. **Настройте конфигурацию:**
    
-   # Confluence
-   CONFLUENCE_URL=https://your-company.atlassian.net
-   CONFLUENCE_EMAIL=your-email@example.com
-   CONFLUENCE_API_TOKEN=your-api-token
+   Откройте файл `app/core/config.py` и измените необходимые параметры:
+   ```python
+   # Database Configuration
+   database_host: str = "postgres"  # Имя сервиса PostgreSQL в Docker Compose
+   database_port: int = 5432
+   database_name: str = "mnt_db"
+   database_user: str = "postgres"
+   database_password: str = "postgres"  # ⚠️ ИЗМЕНИТЕ В PRODUCTION!
+   
+   # Confluence Configuration
+   confluence_url: str = "https://your-company.atlassian.net"
+   confluence_email: Optional[str] = "your-email@example.com"
+   confluence_api_token: Optional[str] = "your-api-token"
    
    # Или для Confluence Server:
-   # CONFLUENCE_URL=http://confluence.company.local:8090
-   # CONFLUENCE_USERNAME=admin
-   # CONFLUENCE_PASSWORD=admin
+   # confluence_url: str = "http://confluence.company.local:8090"
+   # confluence_username: str = "admin"
+   # confluence_password: str = "admin"
    
-   # Логирование
-   LOG_LEVEL=INFO
-   LOG_FORMAT=text
-   LOG_ENVIRONMENT=production
+   # Logging Configuration
+   log_level: str = "INFO"
+   log_format: str = "text"
+   log_environment: str = "production"
    ```
+   
+   **Альтернативно:** Можно задать через переменные окружения Docker Compose (см. `docker-compose.full.yml`)
 
 3. **Запустите все сервисы:**
    ```bash
@@ -104,7 +108,7 @@ docker-compose -f docker-compose.full.yml down -v
    psql -U postgres -d mnt_db -f database/schema.sql
    ```
 
-3. **Настройте `.env` файл** (см. пример выше)
+3. **Настройте конфигурацию в `app/core/config.py`** (см. пример выше)
 
 4. **Запустите приложение:**
    ```bash
@@ -139,11 +143,11 @@ docker-compose -f docker-compose.full.yml down -v
 
 ## 🔒 Безопасность для Production
 
-1. **Измените пароли БД** в `.env` и `docker-compose.full.yml`
+1. **Измените пароли БД** в `app/core/config.py` и `docker-compose.full.yml`
 2. **Используйте HTTPS** через reverse proxy (nginx/Apache)
 3. **Ограничьте доступ** к портам 8000 и 5432 только внутри сети
 4. **Настройте бэкапы** базы данных PostgreSQL
-5. **Используйте секреты** вместо `.env` файлов (Kubernetes Secrets, Docker Secrets, etc.)
+5. **Используйте переменные окружения** или секреты для production (Kubernetes Secrets, Docker Secrets, etc.) - они имеют приоритет над значениями в `config.py`
 
 ## 📊 Мониторинг
 

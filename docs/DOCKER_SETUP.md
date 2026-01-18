@@ -57,14 +57,15 @@ docker run -d --name confluence-test -p 8090:8090 -v confluence-data:/var/atlass
 
 4. После настройки создайте Space (например, "TEST")
 
-## Шаг 4: Обновление .env файла
+## Шаг 4: Настройка Confluence в config.py
 
-Обновите файл `.env`:
+Откройте файл `app/core/config.py` и обновите настройки Confluence:
 
-```env
-CONFLUENCE_URL=http://localhost:8090
-CONFLUENCE_USERNAME=admin
-CONFLUENCE_PASSWORD=ваш_пароль_админа
+```python
+# Confluence Configuration
+confluence_url: str = "http://localhost:8090"
+confluence_username: str = "admin"
+confluence_password: str = "ваш_пароль_админа"  # Пароль, который вы установили при настройке Confluence
 ```
 
 ## Шаг 5: Проверка работы
