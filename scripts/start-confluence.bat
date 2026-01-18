@@ -38,9 +38,9 @@ echo.
 echo Первый запуск может занять 3-5 минут.
 echo Дождитесь сообщения "Confluence is starting up..."
 echo.
-echo После настройки обновите .env файл:
-echo   CONFLUENCE_URL=http://localhost:8090
-echo   CONFLUENCE_USERNAME=admin
-echo   CONFLUENCE_PASSWORD=ваш_пароль
+echo После настройки обновите app/core/config.py:
+echo   confluence_url = "http://localhost:8090"
+echo   confluence_username = "admin"
+echo   confluence_password = "ваш_пароль"
 echo.
 pause

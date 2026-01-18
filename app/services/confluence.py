@@ -1,7 +1,7 @@
 """Интеграция с Confluence API"""
 import httpx
 from typing import Optional, Dict, Any, List
-from app.config import settings
+from app.core.config import settings
 import base64
 import json
 import io
@@ -320,10 +320,22 @@ class ConfluenceClient:
                 error_text = response.text
                 try:
                     error_json = response.json()
-                    error_text = str(error_json)
+                    # Пытаемся извлечь понятное сообщение об ошибке
+                    if isinstance(error_json, dict):
+                        error_message = error_json.get("message", error_json.get("data", {}).get("message", str(error_json)))
+                        error_text = f"{error_message}"
                 except:
                     pass
-                raise Exception(f"Confluence API error {response.status_code}: {error_text}")
+                
+                # Более понятные сообщения для разных статус-кодов
+                if response.status_code == 400:
+                    raise Exception(f"Ошибка загрузки файла в Confluence (400): Возможно файл с таким именем уже существует или неверный формат данных. Детали: {error_text}")
+                elif response.status_code == 403:
+                    raise Exception(f"Доступ запрещен (403): Проверьте права доступа к странице Confluence. Детали: {error_text}")
+                elif response.status_code == 404:
+                    raise Exception(f"Страница не найдена (404): Проверьте ID страницы Confluence. Детали: {error_text}")
+                else:
+                    raise Exception(f"Confluence API error {response.status_code}: {error_text}")
             
             result = response.json()
             

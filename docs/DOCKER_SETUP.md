@@ -71,7 +71,7 @@ CONFLUENCE_PASSWORD=ваш_пароль_админа
 
 1. Перезапустите ваше приложение:
    ```bash
-   python -m uvicorn app.main:app --reload
+   python -m uvicorn app:app --reload
    ```
 
 2. Откройте http://localhost:8000/mnt/create

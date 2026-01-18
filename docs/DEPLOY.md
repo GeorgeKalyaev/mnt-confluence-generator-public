@@ -108,7 +108,7 @@ docker-compose -f docker-compose.full.yml down -v
 
 4. **Запустите приложение:**
    ```bash
-   python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+   python -m uvicorn app:app --host 0.0.0.0 --port 8000
    ```
 
    Или через systemd (для production):
@@ -124,7 +124,7 @@ docker-compose -f docker-compose.full.yml down -v
    User=www-data
    WorkingDirectory=/path/to/mnt-confluence-generator
    Environment="PATH=/path/to/venv/bin"
-   ExecStart=/path/to/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+   ExecStart=/path/to/venv/bin/python -m uvicorn app:app --host 0.0.0.0 --port 8000
    Restart=always
    
    [Install]

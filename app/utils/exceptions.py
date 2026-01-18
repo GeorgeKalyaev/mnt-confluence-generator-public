@@ -7,7 +7,7 @@ from pydantic import ValidationError
 import traceback
 from typing import Optional
 
-from app.logger import log_error, logger, generate_request_id
+from app.utils.logger import log_error, logger, generate_request_id
 
 
 class AppException(Exception):
@@ -68,7 +68,7 @@ async def app_exception_handler(request: Request, exc: AppException):
     
     # Если это HTML запрос, возвращаем HTML ответ
     if "text/html" in request.headers.get("accept", ""):
-        from app.main import templates
+        from app.routes.main import templates
         return templates.TemplateResponse("error.html", {
             "request": request,
             "error_message": exc.message,
@@ -117,7 +117,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
     
     if "text/html" in request.headers.get("accept", ""):
-        from app.main import templates
+        from app.routes.main import templates
         return templates.TemplateResponse("error.html", {
             "request": request,
             "error_message": user_message,
@@ -163,7 +163,7 @@ async def database_exception_handler(request: Request, exc: SQLAlchemyError):
     )
     
     if "text/html" in request.headers.get("accept", ""):
-        from app.main import templates
+        from app.routes.main import templates
         return templates.TemplateResponse("error.html", {
             "request": request,
             "error_message": user_message,
@@ -203,7 +203,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     user_message = "Произошла внутренняя ошибка сервера. Обратитесь к администратору."
     
     if "text/html" in request.headers.get("accept", ""):
-        from app.main import templates
+        from app.routes.main import templates
         return templates.TemplateResponse("error.html", {
             "request": request,
             "error_message": user_message,

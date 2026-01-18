@@ -5,8 +5,8 @@ from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime, timedelta
 import json
 import re
-from app.models import MNTDocument, MNTStatus
-from app.logger import logger
+from app.core.models import MNTDocument, MNTStatus
+from app.utils.logger import logger
 
 
 def create_mnt(db: Session, data: dict, confluence_space: str, confluence_parent_id: Optional[int] = None) -> dict:

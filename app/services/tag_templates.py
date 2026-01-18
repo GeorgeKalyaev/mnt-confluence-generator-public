@@ -1,6 +1,6 @@
 """Шаблоны данных для автозаполнения МНТ на основе тегов"""
 from typing import Dict, Any, List, Optional
-from app.defaults import *
+from app.utils.defaults import *
 
 
 # Шаблоны данных для разных тегов

@@ -57,7 +57,7 @@ pip install --no-index --find-links ./packages -r requirements.txt
 Для проверки что проект не зависит от интернета:
 
 1. Отключите интернет на машине разработки
-2. Запустите приложение: `python -m uvicorn app.main:app --reload`
+2. Запустите приложение: `python -m uvicorn app:app --reload`
 3. Откройте в браузере: http://localhost:8000
 4. Проверьте что все стили и скрипты загружаются корректно
 

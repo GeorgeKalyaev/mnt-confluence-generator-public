@@ -175,10 +175,10 @@ psql -U postgres -d mnt_db -f database/schema.sql
 
 #### 4. Настройка конфигурации
 
-**📋 ВСЕ НАСТРОЙКИ В ОДНОМ МЕСТЕ - `app/config.py`**
+**📋 ВСЕ НАСТРОЙКИ В ОДНОМ МЕСТЕ - `app/core/config.py`**
 
 **Как настроить:**
-1. Откройте файл `app/config.py`
+1. Откройте файл `app/core/config.py`
 2. Найдите нужную настройку (например, `database_password`)
 3. Измените значение
 4. Перезапустите приложение
@@ -191,7 +191,7 @@ psql -U postgres -d mnt_db -f database/schema.sql
 - `confluence_email` и `confluence_api_token` (для Cloud)
 - ИЛИ `confluence_username` и `confluence_password` (для Server/Datacenter)
 
-**Пример настроек в `app/config.py`:**
+**Пример настроек в `app/core/config.py`:**
 ```python
 # Database Configuration (ОБЯЗАТЕЛЬНО ИЗМЕНИТЕ ПАРОЛЬ!)
 database_host: str = "localhost"
@@ -214,7 +214,7 @@ backup_retention_days: int = 30  # Хранить бэкапы 30 дней
 #### 5. Запуск приложения
 
 ```bash
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
 После запуска вы увидите:
@@ -234,38 +234,113 @@ INFO:     Application startup complete.
 
 ```
 mnt-confluence-generator/
-├── app/                          # Основное приложение
-│   ├── config.py                # ⭐ ВСЕ НАСТРОЙКИ ЗДЕСЬ
-│   ├── main.py                  # FastAPI приложение
-│   ├── database.py              # Подключение к БД
-│   ├── db_operations.py         # Операции с БД
-│   ├── models.py                # Модели данных
-│   ├── render.py                # Рендеринг в Confluence формат
-│   ├── confluence.py            # Интеграция с Confluence API
-│   ├── export.py                # Экспорт документов
-│   ├── logger.py                # Логирование
-│   ├── backup.py                # Модуль резервного копирования
-│   ├── scheduler.py             # Планировщик автоматических бэкапов
-│   ├── exceptions.py            # Обработка ошибок
-│   ├── validation.py            # Валидация и санитизация данных
-│   ├── templates/               # HTML шаблоны
-│   └── static/                  # Статические файлы (CSS, JS, изображения)
-├── database/
-│   └── schema.sql               # Схема базы данных (ВСЕ таблицы)
-├── docs/                        # Документация
-├── backups/                     # Автоматические бэкапы БД (создается автоматически)
-├── logs/                        # Логи приложения
-├── docker-compose.full.yml      # Docker Compose для полного стека
-├── Dockerfile                   # Образ приложения
-├── requirements.txt             # Python зависимости
-└── README.md                    # Этот файл
+├── app/                                    # Основное приложение
+│   ├── __init__.py                        # Точка входа приложения
+│   ├── core/                              # Ядро приложения
+│   │   ├── __init__.py                    # Экспорт core модулей
+│   │   ├── config.py                      # ⭐ ВСЕ НАСТРОЙКИ ЗДЕСЬ
+│   │   ├── database.py                    # Подключение к БД (SQLAlchemy)
+│   │   └── models.py                      # Pydantic модели данных
+│   ├── routes/                            # Роуты FastAPI (APIRouter)
+│   │   ├── __init__.py                    # Экспорт роутеров
+│   │   ├── main.py                        # Создание FastAPI app, базовые роуты
+│   │   ├── mnt.py                         # HTML роуты для работы с МНТ (18 роутов)
+│   │   ├── api.py                         # REST API endpoints (22 роута)
+│   │   └── admin.py                       # Административные функции (аудит, теги)
+│   ├── middleware/                        # Middleware
+│   │   ├── __init__.py                    # Экспорт middleware
+│   │   └── logging.py                     # Middleware для логирования HTTP запросов
+│   ├── services/                          # Бизнес-логика
+│   │   ├── __init__.py                    # Экспорт сервисов
+│   │   ├── db_operations.py               # Операции с БД (CRUD, версионирование)
+│   │   ├── confluence.py                  # Интеграция с Confluence API
+│   │   ├── render.py                      # Рендеринг в Confluence Storage Format
+│   │   ├── export.py                      # Экспорт документов (HTML, TXT)
+│   │   ├── backup.py                      # Резервное копирование БД
+│   │   ├── scheduler.py                   # Планировщик автоматических бэкапов
+│   │   └── tag_templates.py               # Шаблоны данных для автозаполнения по тегам
+│   ├── utils/                             # Утилиты
+│   │   ├── __init__.py                    # Экспорт утилит
+│   │   ├── logger.py                      # Система логирования (текст/JSON)
+│   │   ├── validation.py                  # Валидация и санитизация данных
+│   │   ├── exceptions.py                  # Обработка исключений (централизованная)
+│   │   ├── defaults.py                    # Дефолтные значения МНТ
+│   │   ├── completeness_checker.py        # Проверка полноты заполнения документа
+│   │   ├── diff_tracker.py                # Отслеживание изменений данных
+│   │   ├── field_history_tracker.py       # История изменений отдельных полей
+│   │   └── version_diff.py                # Сравнение версий документов
+│   ├── templates/                         # HTML шаблоны (Jinja2)
+│   │   ├── base.html                      # Базовый шаблон
+│   │   ├── list.html                      # Список МНТ
+│   │   ├── create.html                    # Создание МНТ
+│   │   ├── edit.html                      # Редактирование МНТ
+│   │   ├── versions.html                  # История версий
+│   │   ├── version_compare.html           # Сравнение версий
+│   │   ├── trash.html                     # Корзина
+│   │   └── error.html                     # Страница ошибок
+│   └── static/                            # Статические файлы
+│       ├── css/
+│       │   └── bootstrap.min.css          # Bootstrap 5.3.0
+│       ├── js/                            # JavaScript модули
+│       │   ├── autocomplete.js            # Автодополнение полей
+│       │   ├── clipboard-upload.js        # Загрузка изображений из буфера
+│       │   ├── completeness-indicator.js  # Индикатор полноты документа
+│       │   ├── drag-drop-tables.js        # Drag & drop для таблиц
+│       │   ├── field-help.js              # Подсказки для полей
+│       │   ├── form-validation.js         # Валидация форм
+│       │   ├── image-preview.js           # Превью изображений
+│       │   ├── table-editor.js            # Редактор таблиц
+│       │   ├── unsaved-changes.js         # Предупреждение о несохраненных изменениях
+│       │   └── vendor/
+│       │       └── bootstrap.bundle.min.js # Bootstrap JS
+│       ├── favicon.svg                    # Иконка сайта
+│       └── images/
+│           └── max_performance.png        # Изображения для примеров
+├── database/                              # База данных
+│   └── schema.sql                         # SQL схема (все таблицы и индексы)
+├── docs/                                  # 📖 Вся документация
+│   ├── README.md                          # Навигация по документации
+│   ├── QUICK_START.md                     # Быстрый старт
+│   ├── CHANGELOG.md                       # История изменений
+│   ├── CONTRIBUTING.md                    # Руководство по внесению вклада
+│   ├── INSTALL.md                         # Инструкция по установке
+│   ├── DEPLOY.md                          # Развертывание для DevOps
+│   ├── DOCKER_SETUP.md                    # Настройка Docker
+│   ├── DOCKER_TROUBLESHOOT.md             # Решение проблем с Docker
+│   ├── QUICK_START_CONFLUENCE.md          # Настройка Confluence
+│   ├── GET_SERVER_LICENSE.md              # Получение лицензии Confluence Server
+│   ├── LOGGING.md                         # Система логирования
+│   ├── OFFLINE_DEPENDENCIES.md            # Офлайн установка зависимостей
+│   ├── DRAG_DROP_AUTOCOMPLETE_IMPLEMENTATION.md  # Техническая документация
+│   └── screenshots/                       # Скриншоты интерфейса
+│       └── *.png                          # Изображения интерфейса
+├── scripts/                               # Вспомогательные скрипты
+│   ├── start-confluence.bat               # Запуск Confluence Server (Windows)
+│   └── start-confluence.ps1               # Запуск Confluence Server (PowerShell)
+├── tests/                                 # Тесты (структура для будущих тестов)
+│   ├── __init__.py
+│   └── conftest.py                        # Pytest конфигурация
+├── packages/                              # Локальные Python зависимости (для офлайн установки)
+│   ├── README.md                          # Инструкция по использованию
+│   └── *.whl                              # Wheel пакеты (29 файлов)
+├── docker-compose.full.yml                # Docker Compose: полный стек (PostgreSQL + App + Confluence)
+├── docker-compose.yml                     # Docker Compose: только приложение
+├── Dockerfile                             # Образ приложения для Docker
+├── requirements.txt                       # Python зависимости
+├── .gitignore                             # Git ignore правила
+└── README.md                              # Этот файл (главная документация)
+
+# Папки, создаваемые автоматически (в .gitignore):
+# ├── backups/                             # Автоматические бэкапы БД
+# ├── logs/                                # Логи приложения
+# └── __pycache__/                         # Python кэш (в каждой папке)
 ```
 
 ---
 
 ## ⚙️ Конфигурация
 
-**Все настройки находятся в одном файле: `app/config.py`**
+**Все настройки находятся в одном файле: `app/core/config.py`**
 
 ### Основные настройки:
 
@@ -275,7 +350,7 @@ mnt-confluence-generator/
 - **Бэкапы**: `backup_enabled`, `backup_time`, `backup_retention_days`
 
 **Как изменить:**
-1. Откройте `app/config.py`
+1. Откройте `app/core/config.py`
 2. Измените нужные значения
 3. Перезапустите приложение
 
@@ -283,8 +358,24 @@ mnt-confluence-generator/
 
 ## 📖 Дополнительная документация
 
-- [Инструкция по развертыванию для DevOps](docs/DEPLOY.md)
-- [Быстрый старт](QUICK_START.md)
+Вся документация находится в папке [`docs/`](docs/):
+
+### Основная документация
+- [🚀 Быстрый старт](docs/QUICK_START.md) - Быстрое начало работы с проектом
+- [📋 История изменений](docs/CHANGELOG.md) - История версий и изменений
+- [🤝 Руководство по внесению вклада](docs/CONTRIBUTING.md) - Как внести вклад в проект
+
+### Установка и развертывание
+- [📦 Инструкция по установке](docs/INSTALL.md) - Подробная инструкция по установке
+- [🚢 Развертывание для DevOps](docs/DEPLOY.md) - Инструкции для DevOps
+- [🐳 Настройка Docker](docs/DOCKER_SETUP.md) - Настройка Docker окружения
+- [🔧 Решение проблем с Docker](docs/DOCKER_TROUBLESHOOT.md) - Troubleshooting Docker
+- [📦 Офлайн зависимости](docs/OFFLINE_DEPENDENCIES.md) - Установка без интернета
+
+### Дополнительная информация
+- [🔗 Настройка Confluence](docs/QUICK_START_CONFLUENCE.md) - Быстрый старт с Confluence
+- [📄 Получение лицензии Confluence Server](docs/GET_SERVER_LICENSE.md)
+- [📝 Логирование](docs/LOGGING.md) - Настройка системы логирования
 
 ---
 

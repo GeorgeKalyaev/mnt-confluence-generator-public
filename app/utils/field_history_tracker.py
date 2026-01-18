@@ -1,6 +1,6 @@
 """Модуль для отслеживания изменений полей МНТ"""
 from typing import Dict, Any, List, Tuple, Optional
-from app.logger import logger
+from app.utils.logger import logger
 
 
 def compare_document_fields(old_doc: Dict[str, Any], new_doc: Dict[str, Any]) -> List[Tuple[str, str, Any, Any]]:

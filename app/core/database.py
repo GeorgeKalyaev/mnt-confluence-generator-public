@@ -1,7 +1,7 @@
 """Подключение к базе данных"""
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
-from app.config import settings
+from app.core.config import settings
 import psycopg2
 
 # Создание движка SQLAlchemy

@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 import logging
 
-from app.config import settings
-from app.logger import logger
+from app.core.config import settings
+from app.utils.logger import logger
 
 # Создаем директорию для бэкапов
 BACKUP_DIR = Path("backups")
@@ -134,8 +134,8 @@ def export_all_data(output_file: Optional[str] = None) -> str:
     Returns:
         Путь к созданному файлу архива
     """
-    from app.database import get_db
-    from app.db_operations import list_mnt
+    from app.core.database import get_db
+    from app.services.db_operations import list_mnt
     
     if output_file is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

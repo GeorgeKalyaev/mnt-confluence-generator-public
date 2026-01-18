@@ -4,9 +4,9 @@ from datetime import datetime, time
 from typing import Optional
 import logging
 
-from app.backup import create_database_backup, delete_backup, list_backups
-from app.config import settings
-from app.logger import logger
+from app.services.backup import create_database_backup, delete_backup, list_backups
+from app.core.config import settings
+from app.utils.logger import logger
 
 # Настройки автоматических бэкапов из переменных окружения
 BACKUP_ENABLED = settings.backup_enabled if hasattr(settings, 'backup_enabled') else True

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 from logging.handlers import RotatingFileHandler
 
-from app.config import settings
+from app.core.config import settings
 
 # Добавляем уровень TRACE (ниже DEBUG)
 TRACE_LEVEL = 5
@@ -38,11 +38,11 @@ class ContextFilter(logging.Filter):
     def filter(self, record):
         # Добавляем контекстные поля, если их нет
         if not hasattr(record, 'request_id'):
-            record.request_id = getattr(record, 'request_id', '-')
+            record.request_id = '-'
         if not hasattr(record, 'user_ip'):
-            record.user_ip = getattr(record, 'user_ip', '-')
+            record.user_ip = '-'
         if not hasattr(record, 'user_name'):
-            record.user_name = getattr(record, 'user_name', '-')
+            record.user_name = '-'
         
         # Добавляем дополнительные поля
         if not hasattr(record, 'hostname'):
@@ -52,20 +52,30 @@ class ContextFilter(logging.Filter):
         if not hasattr(record, 'environment'):
             record.environment = settings.log_environment
         
-        # Метрики (если есть)
-        if not hasattr(record, 'duration_ms'):
-            record.duration_ms = getattr(record, 'duration_ms', None)
-        if not hasattr(record, 'request_size_bytes'):
-            record.request_size_bytes = getattr(record, 'request_size_bytes', None)
-        if not hasattr(record, 'response_size_bytes'):
-            record.response_size_bytes = getattr(record, 'response_size_bytes', None)
-        
         return True
 
 
 class TextFormatter(logging.Formatter):
     """Текстовый форматтер с поддержкой контекста"""
     def format(self, record):
+        # Игнорируем логи от httpx, чтобы избежать проблем с форматированием
+        if record.name.startswith('httpx'):
+            # Используем стандартное форматирование для httpx логов
+            return super().format(record)
+        
+        # Правильно получаем сообщение (с учетом форматирования через % или getMessage)
+        # Используем getMessage() который правильно обрабатывает форматирование
+        try:
+            original_msg = record.getMessage()
+        except Exception:
+            # Если getMessage() не работает, используем просто msg
+            original_msg = str(record.msg) if record.msg else ""
+        
+        # Проверяем, не содержит ли сообщение уже контекст (чтобы не дублировать)
+        if isinstance(original_msg, str) and original_msg.startswith('[') and ']' in original_msg:
+            # Сообщение уже содержит контекст, используем его как есть
+            return super().format(record)
+        
         # Добавляем контекстные поля
         context_parts = []
         if hasattr(record, 'request_id') and record.request_id != '-':
@@ -82,8 +92,6 @@ class TextFormatter(logging.Formatter):
             context_parts.append(f"Env={record.environment}")
         
         context_str = " | ".join(context_parts) if context_parts else ""
-        if context_str:
-            record.msg = f"[{context_str}] {record.msg}"
         
         # Добавляем метрики в сообщение
         metrics = []
@@ -94,10 +102,30 @@ class TextFormatter(logging.Formatter):
         if hasattr(record, 'response_size_bytes') and record.response_size_bytes is not None:
             metrics.append(f"ResponseSize: {record.response_size_bytes} bytes")
         
-        if metrics:
-            record.msg += f" | {' | '.join(metrics)}"
+        # Формируем итоговое сообщение (сохраняем оригинальные значения)
+        original_msg_stored = record.msg
+        original_args_stored = record.args
         
-        return super().format(record)
+        # Устанавливаем уже отформатированное сообщение и убираем args
+        record.msg = original_msg
+        record.args = None
+        
+        if context_str:
+            if metrics:
+                record.msg = f"[{context_str}] {original_msg} | {' | '.join(metrics)}"
+            else:
+                record.msg = f"[{context_str}] {original_msg}"
+        elif metrics:
+            record.msg = f"{original_msg} | {' | '.join(metrics)}"
+        
+        # Форматируем и восстанавливаем оригинальные значения
+        try:
+            result = super().format(record)
+        finally:
+            record.msg = original_msg_stored
+            record.args = original_args_stored
+        
+        return result
 
 
 class JSONFormatter(logging.Formatter):
@@ -204,6 +232,12 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("mnt_generator")
+logger.propagate = False  # Предотвращаем дублирование через родительские loggers
+
+# Отключаем логирование uvicorn.access для уменьшения шума
+uvicorn_access = logging.getLogger("uvicorn.access")
+uvicorn_access.propagate = False
+uvicorn_access.setLevel(logging.WARNING)  # Логируем только WARNING и выше
 
 # Генератор request ID
 def generate_request_id() -> str:

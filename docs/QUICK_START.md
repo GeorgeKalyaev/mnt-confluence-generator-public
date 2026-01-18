@@ -6,7 +6,7 @@
 Скачайте и установите [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 ### Шаг 2: Настройте config.py (опционально)
-Для Docker Compose настройки можно оставить по умолчанию, но если нужно изменить - откройте `app/config.py`:
+Для Docker Compose настройки можно оставить по умолчанию, но если нужно изменить - откройте `app/core/config.py`:
 
 ```python
 # Для Docker Compose измените database_host:
@@ -77,7 +77,7 @@ psql -U postgres -d mnt_db -f database/schema.sql
 ```
 
 ### Шаг 6: Настройте config.py
-Откройте `app/config.py` и измените настройки базы данных:
+Откройте `app/core/config.py` и измените настройки базы данных:
 
 ```python
 # Обязательно измените пароль PostgreSQL:
@@ -91,7 +91,7 @@ confluence_api_token: Optional[str] = "your-api-token"
 
 ### Шаг 7: Запустите приложение
 ```bash
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Шаг 8: Откройте в браузере
@@ -109,13 +109,13 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### Ошибка подключения к базе данных
 - Проверьте, что PostgreSQL запущен
-- Проверьте правильность данных в `app/config.py`
+- Проверьте правильность данных в `app/core/config.py`
 - Убедитесь, что база данных `mnt_db` создана
 
 ### Порт 8000 занят
 Измените порт в команде запуска:
 ```bash
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
+python -m uvicorn app:app --reload --host 0.0.0.0 --port 8001
 ```
 
 ### Ошибки при установке зависимостей

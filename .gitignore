@@ -9,7 +9,7 @@ venv/
 ENV/
 .venv
 
-# Environment (не используется, все настройки в app/config.py)
+# Environment (не используется, все настройки в app/core/config.py)
 # Если создан .env файл локально - он будет игнорироваться git
 .env
 .env.local
@@ -28,6 +28,15 @@ ENV/
 # Logs
 *.log
 logs/
+
+# Backups
+backups/
+*.sql
+*.dump
+*.backup
+
+# Packages (локальные зависимости для офлайн установки)
+# packages/ - оставляем в git для офлайн установки
 
 # Migrations scripts (already applied)
 apply_*.py

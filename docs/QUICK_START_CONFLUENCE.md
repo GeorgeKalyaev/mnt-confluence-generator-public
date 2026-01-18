@@ -48,7 +48,7 @@ CONFLUENCE_PASSWORD=ваш_пароль_который_вы_создали
 ## Шаг 6: Перезапустите ваше приложение
 
 ```bash
-python -m uvicorn app.main:app --reload
+python -m uvicorn app:app --reload
 ```
 
 ## Шаг 7: Проверьте работу

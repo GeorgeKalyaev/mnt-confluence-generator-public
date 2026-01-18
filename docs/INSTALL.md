@@ -340,7 +340,7 @@ LOG_ENABLE_CONSOLE=true
    ```
 3. Запустите приложение:
    ```bash
-   python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   python -m uvicorn app:app --reload --host 0.0.0.0 --port 8000
    ```
 
 **Параметры запуска:**

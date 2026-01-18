@@ -40,9 +40,9 @@ Write-Host ""
 Write-Host "Первый запуск может занять 3-5 минут." -ForegroundColor Yellow
 Write-Host "Дождитесь сообщения 'Confluence is starting up...'"
 Write-Host ""
-Write-Host "После настройки обновите .env файл:" -ForegroundColor Cyan
-Write-Host "  CONFLUENCE_URL=http://localhost:8090"
-Write-Host "  CONFLUENCE_USERNAME=admin"
-Write-Host "  CONFLUENCE_PASSWORD=ваш_пароль"
+Write-Host "После настройки обновите app/core/config.py:" -ForegroundColor Cyan
+Write-Host "  confluence_url = `"http://localhost:8090`""
+Write-Host "  confluence_username = `"admin`""
+Write-Host "  confluence_password = `"ваш_пароль`""
 Write-Host ""
 Read-Host "Нажмите Enter для выхода"

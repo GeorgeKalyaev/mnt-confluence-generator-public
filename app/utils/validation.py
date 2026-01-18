@@ -3,7 +3,7 @@ import re
 import html
 from typing import Any, Dict, List, Optional
 from markupsafe import Markup, escape
-from app.logger import log_security_event
+from app.utils.logger import log_security_event
 
 
 def sanitize_string(value: Any, max_length: Optional[int] = None, allow_html: bool = False) -> str:

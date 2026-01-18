@@ -1,7 +1,7 @@
 """Модуль для экспорта МНТ в различные форматы"""
 from typing import Dict, Any
 from datetime import datetime
-from app.render import render_mnt_to_confluence_storage
+from app.services.render import render_mnt_to_confluence_storage
 import html
 import re
 
