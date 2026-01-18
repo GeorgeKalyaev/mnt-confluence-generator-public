@@ -1,6 +1,6 @@
 """Главный файл приложения FastAPI"""
 from fastapi import FastAPI, Depends, HTTPException, Request, Form, File, UploadFile, Query
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response, FileResponse
 from starlette.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -155,6 +155,14 @@ async def startup_event():
 
 
 # ==================== UI Routes ====================
+
+@app.get("/favicon.ico")
+async def favicon():
+    """Обработчик для favicon.ico - возвращает SVG favicon"""
+    favicon_path = os.path.join("app", "static", "favicon.svg")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path, media_type="image/svg+xml")
+    return Response(status_code=204)
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
