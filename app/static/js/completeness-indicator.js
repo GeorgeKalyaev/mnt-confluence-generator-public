@@ -18,8 +18,12 @@ class CompletenessIndicator {
         // Создаем контейнер для индикатора
         this.createIndicatorContainer();
         
-        // Обновляем индикатор при загрузке страницы
-        this.updateCompleteness();
+        // Ждем небольшую задержку, чтобы убедиться, что все элементы DOM загружены
+        // и предзаполненные значения уже есть
+        setTimeout(() => {
+            // Обновляем индикатор при загрузке страницы
+            this.updateCompleteness();
+        }, 500);
         
         // Обновляем индикатор при изменении полей формы
         this.form.addEventListener('input', () => {
@@ -31,9 +35,16 @@ class CompletenessIndicator {
         });
         
         // Также слушаем события на динамически добавленных элементах таблиц
-        document.addEventListener('DOMNodeInserted', () => {
+        const observer = new MutationObserver(() => {
             this.debounceUpdate();
-        }, false);
+        });
+        
+        // Наблюдаем за изменениями в форме
+        observer.observe(this.form, {
+            childList: true,
+            subtree: true,
+            attributes: false
+        });
     }
     
     createIndicatorContainer() {
@@ -55,7 +66,7 @@ class CompletenessIndicator {
                         </div>
                     </div>
                     <div id="completeness-details" class="small text-muted">
-                        Заполнено: <span id="filled-sections">0</span> из <span id="total-sections">15</span> разделов
+                        Заполнено: <span id="filled-sections">0</span> из <span id="total-sections">18</span> разделов
                     </div>
                     <div id="incomplete-sections" class="mt-2"></div>
                 </div>
@@ -80,18 +91,42 @@ class CompletenessIndicator {
             const formData = new FormData(this.form);
             const data = {};
             
-            // Собираем все данные формы
+            // Собираем все данные формы (включая confluence_space и confluence_parent_id для проверки полноты)
             for (const [key, value] of formData.entries()) {
-                if (key !== 'confluence_space' && key !== 'confluence_parent_id' && key !== 'publish') {
+                if (key !== 'publish') {  // Исключаем только publish, остальное собираем
                     data[key] = value;
                 }
             }
             
+            // Также собираем данные напрямую из полей формы (включая textarea и input)
+            // Это важно для предзаполненных полей и полей, которые могут не попасть в FormData
+            // FormData может не включать пустые поля или предзаполненные значения
+            const formElements = this.form.querySelectorAll('input, textarea, select');
+            formElements.forEach(element => {
+                const name = element.name || element.id;
+                if (name && name !== 'publish') {  // Исключаем только publish, остальное собираем (включая confluence_space, confluence_parent_id, tags)
+                    if (element.type === 'checkbox') {
+                        data[name] = element.checked ? element.value : '';
+                    } else if (element.type === 'radio') {
+                        if (element.checked) {
+                            data[name] = element.value;
+                        }
+                    } else {
+                        // Для textarea и input получаем значение напрямую из DOM
+                        // Это гарантирует, что мы получим актуальное значение, включая предзаполненные
+                        const value = element.value || '';
+                        // Всегда используем значение из DOM, чтобы получить предзаполненные данные
+                        data[name] = value;
+                    }
+                }
+            });
+            
             // Также собираем данные из скрытых полей таблиц
             const hiddenInputs = this.form.querySelectorAll('input[type="hidden"]');
             hiddenInputs.forEach(input => {
-                if (input.id && input.id.endsWith('_table')) {
-                    data[input.id] = input.value || '';
+                const name = input.name || input.id;
+                if (name && (name.endsWith('_table') || name.includes('_table'))) {
+                    data[name] = input.value || '';
                 }
             });
             
@@ -108,11 +143,16 @@ class CompletenessIndicator {
             });
             
             if (!response.ok) {
-                console.error('Ошибка проверки полноты');
+                console.error('CompletenessIndicator: Ошибка проверки полноты', response.status);
                 return;
             }
             
             completeness = await response.json();
+            
+            if (!completeness || !completeness.sections) {
+                console.error('CompletenessIndicator: Неверный формат ответа от сервера');
+                return;
+            }
             
             this.updateIndicator(completeness);
         } catch (error) {
@@ -131,7 +171,7 @@ class CompletenessIndicator {
         
         const percentage = completeness.completion_percentage || 0;
         const filled = completeness.filled_sections || 0;
-        const total = completeness.total_sections || 15;
+        const total = completeness.total_sections || 18;
         
         // Обновляем прогресс-бар
         progressBar.style.width = `${percentage}%`;
@@ -151,6 +191,13 @@ class CompletenessIndicator {
             progressBar.classList.add('bg-warning');
         } else {
             progressBar.classList.add('bg-danger');
+        }
+        
+        // Обновляем индикаторы в навигации
+        if (completeness.sections && completeness.sections.length > 0) {
+            this.updateNavigationIndicators(completeness.sections);
+        } else {
+            console.warn('CompletenessIndicator: No sections data in completeness response');
         }
         
         // Показываем незаполненные разделы
@@ -178,6 +225,65 @@ class CompletenessIndicator {
                 `;
             }
         }
+    }
+    
+    updateNavigationIndicators(sections) {
+        if (!sections || sections.length === 0) {
+            console.warn('CompletenessIndicator: sections array is empty');
+            return;
+        }
+        
+        // Создаем карту статусов заполненности по ID разделов
+        const sectionStatusMap = {};
+        sections.forEach(section => {
+            sectionStatusMap[section.id] = section.filled;
+        });
+        
+        // Обновляем навигацию
+        const navItems = document.querySelectorAll('.form-navigation .nav-item[href^="#"]');
+        
+        navItems.forEach(navItem => {
+            const href = navItem.getAttribute('href');
+            if (href && href.startsWith('#')) {
+                const sectionId = href.substring(1);
+                const isFilled = sectionStatusMap[sectionId];
+                
+                // Удаляем предыдущие классы статуса
+                navItem.classList.remove('nav-item-filled', 'nav-item-empty');
+                
+                // Добавляем соответствующий класс
+                if (isFilled !== undefined) {
+                    if (isFilled) {
+                        navItem.classList.add('nav-item-filled');
+                    } else {
+                        navItem.classList.add('nav-item-empty');
+                    }
+                }
+            }
+        });
+        
+        // Также обновляем подразделы, которые могут ссылаться на подразделы (3-1, 3-2 и т.д.)
+        // Но для них нет отдельных проверок, поэтому они наследуют статус основного раздела
+        const subNavItems = document.querySelectorAll('.form-navigation .nav-subsection[href^="#"]');
+        subNavItems.forEach(subNavItem => {
+            const href = subNavItem.getAttribute('href');
+            if (href && href.startsWith('#')) {
+                const subSectionId = href.substring(1);
+                // Для подразделов проверяем родительский раздел
+                // Например, section-3-1 -> проверяем section-3
+                const parentSectionId = subSectionId.replace(/-\d+$/, '');
+                const parentFilled = sectionStatusMap[parentSectionId];
+                
+                subNavItem.classList.remove('nav-item-filled', 'nav-item-empty');
+                if (parentFilled !== undefined) {
+                    if (parentFilled) {
+                        subNavItem.classList.add('nav-item-filled');
+                    } else {
+                        subNavItem.classList.add('nav-item-empty');
+                    }
+                }
+            }
+        });
     }
     
     debounceUpdate() {

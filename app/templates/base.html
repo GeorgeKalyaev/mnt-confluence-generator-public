@@ -368,7 +368,8 @@
         }
         
         .nav-item {
-            display: block;
+            display: flex;
+            align-items: center;
             padding: 0.625rem 0.875rem;
             color: var(--text-secondary);
             text-decoration: none;
@@ -380,6 +381,44 @@
             margin-bottom: 0.125rem;
             line-height: 1.5;
             word-wrap: break-word;
+            position: relative;
+        }
+        
+        /* Индикатор заполненности перед текстом - ТОЛЬКО для боковой навигации формы */
+        .form-navigation .nav-item::before {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            flex-shrink: 0;
+            background-color: #cbd5e1; /* Серый по умолчанию (неизвестно) */
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Зеленый индикатор для заполненных разделов - ТОЛЬКО для боковой навигации формы */
+        .form-navigation .nav-item.nav-item-filled::before {
+            background-color: #10b981 !important; /* Зеленый */
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2), 0 0 8px rgba(16, 185, 129, 0.3);
+        }
+        
+        /* Желтый индикатор для незаполненных разделов - ТОЛЬКО для боковой навигации формы */
+        .form-navigation .nav-item.nav-item-empty::before {
+            background-color: #f59e0b !important; /* Желтый */
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2), 0 0 8px rgba(245, 158, 11, 0.3);
+            animation: pulse-warning 2s infinite;
+        }
+        
+        @keyframes pulse-warning {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
         }
         
         .nav-item:hover {
@@ -394,6 +433,32 @@
             color: var(--primary-dark);
             font-weight: 600;
             border-left-color: var(--primary-color);
+        }
+        
+        /* Дополнительная подсветка для заполненных разделов - ТОЛЬКО для боковой навигации формы */
+        .form-navigation .nav-item-filled {
+            color: var(--text-primary);
+        }
+        
+        .form-navigation .nav-item-filled:hover {
+            background-color: #f0fdf4;
+        }
+        
+        /* Дополнительная подсветка для незаполненных разделов - ТОЛЬКО для боковой навигации формы */
+        .form-navigation .nav-item-empty {
+            color: #b45309;
+            font-weight: 500;
+        }
+        
+        .form-navigation .nav-item-empty:hover {
+            background-color: #fffbeb;
+        }
+        
+        /* Гарантируем, что главное меню НЕ имеет индикаторов */
+        .navbar-nav .nav-item::before,
+        .navbar-nav .nav-link::before {
+            display: none !important;
+            content: none !important;
         }
         
         .nav-subsection {

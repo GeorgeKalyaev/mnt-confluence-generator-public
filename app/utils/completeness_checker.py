@@ -10,7 +10,23 @@ def check_section_completeness(data: Dict[str, Any], section_id: str, section_na
     Returns:
         Tuple[bool, str]: (заполнен ли раздел, описание проблемы если не заполнен)
     """
-    if section_id == "section-1":  # История изменений
+    if section_id == "section-header":  # Заголовок документа
+        project_name = data.get("project_name", "").strip()
+        organization_name = data.get("organization_name", "").strip()
+        system_version = data.get("system_version", "").strip()
+        author = data.get("author", "").strip()
+        
+        if not project_name or len(project_name) < 2:
+            return False, "Название проекта не заполнено"
+        if not organization_name or len(organization_name) < 2:
+            return False, "Название компании не заполнено"
+        if not system_version or len(system_version) < 1:
+            return False, "Версия системы не заполнена"
+        if not author or len(author) < 2:
+            return False, "Автор не указан"
+        return True, ""
+    
+    elif section_id == "section-1":  # История изменений
         history_table = data.get("history_changes_table", "").strip()
         if not history_table or history_table.count("\n") < 1:
             return False, "Таблица истории изменений пуста"
@@ -177,6 +193,23 @@ def check_section_completeness(data: Dict[str, Any], section_id: str, section_na
             return False, "Таблица контактов не заполнена"
         return True, ""
     
+    elif section_id == "section-tags":  # Теги
+        # Теги - опциональное поле, но для индикатора проверяем заполнение
+        tags = data.get("tags", "").strip()
+        if not tags or len(tags) < 2:
+            return False, "Теги не заполнены (опционально)"
+        return True, ""
+    
+    elif section_id == "section-confluence":  # Публикация в Confluence
+        # Публикация в Confluence - проверяем заполнение confluence_space
+        # confluence_space имеет значение по умолчанию "TEST" в форме
+        # confluence_parent_id - опциональное поле
+        confluence_space = data.get("confluence_space", "").strip()
+        if not confluence_space or len(confluence_space) < 1:
+            return False, "Space Key не указан"
+        # Если указан хотя бы space, считаем раздел заполненным
+        return True, ""
+    
     return True, ""  # Неизвестный раздел считаем заполненным
 
 
@@ -201,6 +234,7 @@ def check_document_completeness(data: Dict[str, Any]) -> Dict[str, Any]:
         }
     """
     sections = [
+        ("section-header", "Заголовок документа"),
         ("section-1", "1. История изменений"),
         ("section-2", "2. Лист согласования"),
         ("section-3", "3. Сокращения и терминология"),
@@ -216,6 +250,8 @@ def check_document_completeness(data: Dict[str, Any]) -> Dict[str, Any]:
         ("section-13", "13. Требования к Заказчику"),
         ("section-14", "14. Материалы, подлежащие сдаче"),
         ("section-15", "15. Контакты"),
+        ("section-tags", "Теги"),
+        ("section-confluence", "Публикация в Confluence"),
     ]
     
     section_results = []

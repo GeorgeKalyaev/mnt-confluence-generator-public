@@ -86,6 +86,9 @@
             <a href="#section-15" class="nav-item">15. Контакты</a>
         </div>
         <div class="nav-section">
+            <a href="#section-tags" class="nav-item">Теги</a>
+        </div>
+        <div class="nav-section">
             <a href="#section-confluence" class="nav-item">Публикация в Confluence</a>
         </div>
     </div>
@@ -1966,12 +1969,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const standComparisonData = standComparisonTableHidden.value.trim();
         
         if (!standComparisonData) {
-            return; // Нет данных - таблица остается пустой
+            // Нет данных - добавляем дефолтные строки
+            addDefaultStandComparisonRows();
+            return;
         }
         
         const lines = standComparisonData.split('\n').filter(line => line.trim());
         if (lines.length < 2) {
-            return; // Только заголовок или пусто
+            // Только заголовок или пусто - добавляем дефолтные строки
+            addDefaultStandComparisonRows();
+            return;
         }
         
         // Пропускаем заголовок (первая строка)
@@ -1988,6 +1995,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 standComparisonTableTbody.appendChild(row);
             }
         }
+        
+        updateStandComparisonHiddenField();
+    }
+    
+    // Функция для добавления дефолтных строк
+    function addDefaultStandComparisonRows() {
+        const defaultRows = [
+            {
+                system: 'Сервер приложений',
+                parameter: 'Количество экземпляров',
+                test_value: '3',
+                prod_value: '5'
+            },
+            {
+                system: 'База данных',
+                parameter: 'Размер инстанса',
+                test_value: '16 GB RAM',
+                prod_value: '64 GB RAM'
+            }
+        ];
+        
+        defaultRows.forEach(rowData => {
+            const row = createStandComparisonRow(rowData);
+            standComparisonTableTbody.appendChild(row);
+        });
         
         updateStandComparisonHiddenField();
     }
@@ -2315,12 +2347,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const databasePreparationData = databasePreparationTableHidden.value.trim();
         
         if (!databasePreparationData) {
-            return; // Нет данных - таблица остается пустой
+            // Нет данных - добавляем дефолтные строки
+            addDefaultDatabasePreparationRows();
+            return;
         }
         
         const lines = databasePreparationData.split('\n').filter(line => line.trim());
         if (lines.length < 2) {
-            return; // Только заголовок или пусто
+            // Только заголовок или пусто - добавляем дефолтные строки
+            addDefaultDatabasePreparationRows();
+            return;
         }
         
         // Пропускаем заголовок (первая строка)
@@ -2336,6 +2372,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 databasePreparationTableTbody.appendChild(row);
             }
         }
+        
+        updateDatabasePreparationHiddenField();
+    }
+    
+    // Функция для добавления дефолтных строк
+    function addDefaultDatabasePreparationRows() {
+        const defaultRows = [
+            {
+                schema_table: 'public.users',
+                current_rows: '1000000',
+                growth_per_day: '1000'
+            },
+            {
+                schema_table: 'public.transactions',
+                current_rows: '5000000',
+                growth_per_day: '5000'
+            }
+        ];
+        
+        defaultRows.forEach(rowData => {
+            const row = createDatabasePreparationRow(rowData);
+            databasePreparationTableTbody.appendChild(row);
+        });
         
         updateDatabasePreparationHiddenField();
     }

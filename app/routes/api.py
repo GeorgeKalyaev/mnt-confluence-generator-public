@@ -223,10 +223,14 @@ async def check_completeness_from_data(request: Request, db: Session = Depends(g
         form_data = await request.form()
         data = {}
         
-        # Собираем все данные из формы
+        # Собираем все данные из формы (включая confluence_space и confluence_parent_id для проверки полноты)
         for key, value in form_data.items():
-            if key not in ["confluence_space", "confluence_parent_id", "publish"]:
-                data[key] = value
+            if key not in ["publish"]:  # Исключаем только publish
+                # Сохраняем как строку, убираем лишние пробелы
+                data[key] = value.strip() if isinstance(value, str) else value
+        
+        # Логируем для отладки
+        logger.debug(f"Completeness check: received {len(data)} fields, keys: {list(data.keys())[:10]}")
         
         completeness = check_document_completeness(data)
         return JSONResponse(content=completeness)
