@@ -16,6 +16,7 @@ import time
 import os
 from pathlib import Path
 import uuid
+import urllib.parse
 
 from app.database import get_db, check_connection
 from app.models import MNTData, MNTDocument, MNTCreateRequest, MNTListResponse, MNTUpdateRequest
@@ -42,11 +43,29 @@ from app.logger import (
 from app.export import export_to_html, export_to_text
 from app.completeness_checker import check_document_completeness
 from app.tag_templates import get_template_data_for_tags, get_available_templates, apply_template_to_data
+from app.exceptions import (
+    AppException, NotFoundError, AppValidationError, DatabaseError, ConfluenceError, SecurityError,
+    app_exception_handler, validation_exception_handler, database_exception_handler, general_exception_handler
+)
+from app.validation import sanitize_dict, validate_mnt_data, sanitize_search_query
+from app.backup import (
+    create_database_backup, restore_database_backup, export_all_data,
+    list_backups, delete_backup
+)
+from app.scheduler import start_scheduler_async
+from fastapi.exceptions import RequestValidationError
+from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 from fastapi.responses import Response
 import logging
 
 app = FastAPI(title="МНТ Confluence Generator", version="1.0.0")
+
+# Подключение обработчиков исключений
+app.add_exception_handler(AppException, app_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(SQLAlchemyError, database_exception_handler)
+app.add_exception_handler(Exception, general_exception_handler)
 
 # Настройка логирования для этого модуля
 logger = logging.getLogger("mnt_generator.main")
@@ -149,9 +168,12 @@ app.add_middleware(LoggingMiddleware)
 
 @app.on_event("startup")
 async def startup_event():
-    """Проверка подключения к БД при старте"""
+    """Проверка подключения к БД при старте и запуск планировщика"""
     if not check_connection():
         logger.warning("Database connection failed!")
+    
+    # Запускаем планировщик автоматических бэкапов
+    await start_scheduler_async()
 
 
 # ==================== UI Routes ====================
@@ -205,6 +227,7 @@ async def list_page(
     per_page: int = 20,
     success: Optional[str] = None,
     error: Optional[str] = None,
+    warning: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """Страница со списком МНТ с пагинацией, фильтрами и сортировкой"""
@@ -256,7 +279,7 @@ async def list_page(
     
     # Преобразуем коды ошибок в понятные сообщения
     error_messages = {
-        "confluence_not_configured": "Не удалось удалить МНТ: Confluence недоступен или не настроен. Проверьте настройки в файле .env. Удаление заблокировано, чтобы не допустить потери данных в Confluence.",
+        "confluence_not_configured": "Не удалось удалить МНТ: Confluence недоступен или не настроен. Проверьте настройки в app/config.py. Удаление заблокировано, чтобы не допустить потери данных в Confluence.",
         "already_deleted": "МНТ уже удален.",
         "delete_failed": "Не удалось удалить МНТ. Попробуйте позже.",
         "not_deleted": "МНТ не был удален.",
@@ -284,8 +307,9 @@ async def list_page(
         "total_pages": total_pages,
         "has_prev": page > 1,
         "has_next": page < total_pages,
-        "success_message": success,
-        "error_message": error_message
+        "success_message": success or request.query_params.get("success"),
+        "error_message": error or request.query_params.get("error"),
+        "warning_message": warning or request.query_params.get("warning")
     })
 
 
@@ -1029,7 +1053,6 @@ async def handle_create_form(
     except Exception as e:
         log_error(e, "Ошибка создания МНТ")
         # Редиректим на страницу создания с сообщением об ошибке
-        import urllib.parse
         error_msg = urllib.parse.quote(f"Ошибка создания МНТ: {str(e)[:200]}")
         return RedirectResponse(url=f"/mnt/create?error={error_msg}", status_code=303)
     
@@ -1051,6 +1074,15 @@ async def handle_create_form(
     logger.debug(f"confluence_space = {confluence_space}, confluence_parent_id = {confluence_parent_id}")
     
     if should_publish:
+        # Проверяем что Confluence настроен перед публикацией
+        if not is_confluence_configured():
+            # МНТ уже создан в БД, но публикация не удалась - сохраняем как черновик
+            logger.warning(f"Confluence не настроен - МНТ {mnt_id} сохранен как черновик")
+            warning_msg = urllib.parse.quote(
+                "МНТ успешно создан и сохранен как черновик. Для публикации в Confluence настройте Confluence в app/config.py."
+            )
+            return RedirectResponse(url=f"/mnt/list?warning={warning_msg}&id={mnt_id}", status_code=303)
+        
         try:
             logger.debug(f"Начинаем публикацию МНТ {mnt_id} в Confluence...")
             confluence_client = get_confluence_client()
@@ -1206,7 +1238,6 @@ async def handle_create_form(
                       f"Ошибка публикации в Confluence: {error_msg[:200]}",
                       {"error": error_msg[:500]})
             # Редиректим на страницу редактирования, чтобы пользователь увидел ошибку
-            import urllib.parse
             error_encoded = urllib.parse.quote(error_msg[:200])
             return RedirectResponse(url=f"/mnt/{mnt_id}/edit?error={error_encoded}", status_code=303)
     
@@ -1711,7 +1742,6 @@ async def handle_edit_form(
                       f"Ошибка публикации в Confluence: {error_msg[:200]}",
                       {"error": error_msg[:500]})
             # Редирект с ошибкой
-            import urllib.parse
             error_encoded = urllib.parse.quote(error_msg[:200])
             return RedirectResponse(url=f"/mnt/{mnt_id}/edit?error={error_encoded}", status_code=303)
     
@@ -2615,5 +2645,174 @@ async def upload_terminology_image(
         logger.exception(f"Ошибка при загрузке изображения терминологии: {e}")
         return JSONResponse(
             {"status": "error", "message": str(e)},
+            status_code=500
+        )
+
+
+# ==================== Backup Endpoints (API only) ====================
+# Автоматические бэкапы работают по расписанию (см. app/scheduler.py)
+# Эти endpoints доступны только через API для программного использования
+
+@app.post("/api/backup/create")
+async def create_backup_endpoint(request: Request):
+    """Создание бэкапа базы данных"""
+    request_id = getattr(request.state, 'request_id', '-')
+    user_ip = getattr(request.state, 'user_ip', '-')
+    
+    try:
+        backup_file = create_database_backup()
+        log_user_action(
+            "Создан бэкап базы данных",
+            "anonymous",
+            {"backup_file": backup_file},
+            request_id=request_id,
+            user_ip=user_ip,
+            url="/api/backup/create"
+        )
+        return JSONResponse({
+            "status": "success",
+            "message": "Бэкап успешно создан",
+            "backup_file": backup_file
+        })
+    except Exception as e:
+        log_error(error=e, context="create_backup", request_id=request_id, user_ip=user_ip)
+        return JSONResponse(
+            {"status": "error", "message": f"Ошибка при создании бэкапа: {str(e)}"},
+            status_code=500
+        )
+
+
+@app.post("/api/backup/export-data")
+async def export_data_endpoint(request: Request):
+    """Экспорт всех данных МНТ в архив"""
+    request_id = getattr(request.state, 'request_id', '-')
+    user_ip = getattr(request.state, 'user_ip', '-')
+    
+    try:
+        export_file = export_all_data()
+        log_user_action(
+            "Экспортированы все данные МНТ",
+            "anonymous",
+            {"export_file": export_file},
+            request_id=request_id,
+            user_ip=user_ip,
+            url="/api/backup/export-data"
+        )
+        return JSONResponse({
+            "status": "success",
+            "message": "Данные успешно экспортированы",
+            "export_file": export_file
+        })
+    except Exception as e:
+        log_error(error=e, context="export_data", request_id=request_id, user_ip=user_ip)
+        return JSONResponse(
+            {"status": "error", "message": f"Ошибка при экспорте данных: {str(e)}"},
+            status_code=500
+        )
+
+
+@app.get("/api/backup/list")
+async def list_backups_endpoint(request: Request):
+    """Получение списка всех бэкапов"""
+    request_id = getattr(request.state, 'request_id', '-')
+    user_ip = getattr(request.state, 'user_ip', '-')
+    
+    try:
+        backups = list_backups()
+        # Конвертируем datetime в строки для JSON
+        for backup in backups:
+            if isinstance(backup.get("created_at"), datetime):
+                backup["created_at"] = backup["created_at"].isoformat()
+        
+        return JSONResponse({"status": "success", "backups": backups})
+    except Exception as e:
+        log_error(error=e, context="list_backups", request_id=request_id, user_ip=user_ip)
+        return JSONResponse(
+            {"status": "error", "message": f"Ошибка при получении списка бэкапов: {str(e)}"},
+            status_code=500
+        )
+
+
+@app.post("/api/backup/restore")
+async def restore_backup_endpoint(
+    request: Request,
+    backup_file: str = Form(...),
+    drop_existing: bool = Form(False)
+):
+    """Восстановление базы данных из бэкапа"""
+    request_id = getattr(request.state, 'request_id', '-')
+    user_ip = getattr(request.state, 'user_ip', '-')
+    
+    try:
+        # Строим полный путь к файлу бэкапа
+        backup_path = Path("backups") / backup_file
+        
+        # Логируем критическое действие безопасности
+        log_security_event(
+            event_type="database_restore",
+            description=f"Восстановление базы данных из бэкапа: {backup_file}",
+            severity="critical",
+            details={"backup_file": backup_file, "drop_existing": drop_existing},
+            request_id=request_id,
+            user_ip=user_ip,
+            url="/api/backup/restore"
+        )
+        
+        restore_database_backup(str(backup_path), drop_existing=drop_existing)
+        log_user_action(
+            "Восстановлена база данных из бэкапа",
+            "anonymous",
+            {"backup_file": backup_file, "drop_existing": drop_existing},
+            request_id=request_id,
+            user_ip=user_ip,
+            url="/api/backup/restore"
+        )
+        return JSONResponse({
+            "status": "success",
+            "message": "База данных успешно восстановлена"
+        })
+    except Exception as e:
+        log_error(error=e, context="restore_backup", request_id=request_id, user_ip=user_ip)
+        return JSONResponse(
+            {"status": "error", "message": f"Ошибка при восстановлении: {str(e)}"},
+            status_code=500
+        )
+
+
+@app.delete("/api/backup/{backup_filename:path}")
+async def delete_backup_endpoint(request: Request, backup_filename: str):
+    """Удаление файла бэкапа"""
+    request_id = getattr(request.state, 'request_id', '-')
+    user_ip = getattr(request.state, 'user_ip', '-')
+    
+    try:
+        # Безопасность: проверяем что файл находится в директории backups
+        backup_path = Path("backups") / backup_filename
+        
+        if not backup_path.exists():
+            raise NotFoundError(f"Файл бэкапа не найден: {backup_filename}")
+        
+        if not str(backup_path.resolve()).startswith(str(Path("backups").resolve())):
+            raise SecurityError("Недопустимый путь к файлу бэкапа")
+        
+        delete_backup(str(backup_path))
+        log_user_action(
+            "Удален файл бэкапа",
+            "anonymous",
+            {"backup_file": backup_filename},
+            request_id=request_id,
+            user_ip=user_ip,
+            url=f"/api/backup/{backup_filename}"
+        )
+        return JSONResponse({"status": "success", "message": "Бэкап успешно удален"})
+    except (NotFoundError, SecurityError) as e:
+        return JSONResponse(
+            {"status": "error", "message": str(e)},
+            status_code=404 if isinstance(e, NotFoundError) else 403
+        )
+    except Exception as e:
+        log_error(error=e, context="delete_backup", request_id=request_id, user_ip=user_ip)
+        return JSONResponse(
+            {"status": "error", "message": f"Ошибка при удалении бэкапа: {str(e)}"},
             status_code=500
         )

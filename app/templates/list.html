@@ -43,6 +43,13 @@
 </div>
 {% endif %}
 
+{% if warning_message %}
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+    <strong>⚠ Предупреждение!</strong> {{ warning_message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Список МНТ</h1>
     <a href="/mnt/create" class="btn btn-primary">Создать новый МНТ</a>

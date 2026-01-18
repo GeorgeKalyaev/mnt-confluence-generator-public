@@ -435,9 +435,17 @@ def get_confluence_client() -> ConfluenceClient:
 def is_confluence_configured() -> bool:
     """Проверка наличия настроек Confluence"""
     try:
+        # Проверяем что URL настроен (не дефолтный)
+        url_configured = (
+            settings.confluence_url and 
+            settings.confluence_url != "https://your-confluence.atlassian.net" and
+            settings.confluence_url.strip()
+        )
+        
         # Проверяем наличие credentials без создания клиента
         has_cloud_creds = bool(settings.confluence_email and settings.confluence_api_token)
         has_server_creds = bool(settings.confluence_username and settings.confluence_password)
-        return has_cloud_creds or has_server_creds
+        
+        return url_configured and (has_cloud_creds or has_server_creds)
     except Exception:
         return False

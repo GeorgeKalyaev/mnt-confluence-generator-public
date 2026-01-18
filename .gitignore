@@ -9,7 +9,9 @@ venv/
 ENV/
 .venv
 
-# Environment
+# Environment (не используется, все настройки в app/config.py)
+# Если создан .env файл локально - он будет игнорироваться git
+.env
 .env.local
 .env.*.local
 

@@ -5,32 +5,14 @@
 ### Шаг 1: Установите Docker Desktop
 Скачайте и установите [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
-### Шаг 2: Создайте файл `.env`
-В корне проекта создайте файл `.env` со следующим содержимым:
+### Шаг 2: Настройте config.py (опционально)
+Для Docker Compose настройки можно оставить по умолчанию, но если нужно изменить - откройте `app/config.py`:
 
-```env
-# База данных (для Docker Compose можно оставить как есть)
-DATABASE_HOST=postgres
-DATABASE_PORT=5432
-DATABASE_NAME=mnt_db
-DATABASE_USER=postgres
-DATABASE_PASSWORD=postgres
+```python
+# Для Docker Compose измените database_host:
+database_host: str = "postgres"  # Имя сервиса PostgreSQL в Docker Compose
 
-# Confluence (заполните, если нужно публиковать в Confluence)
-# Для Confluence Cloud:
-CONFLUENCE_URL=https://your-company.atlassian.net
-CONFLUENCE_EMAIL=your-email@example.com
-CONFLUENCE_API_TOKEN=your-api-token
-
-# ИЛИ для Confluence Server:
-# CONFLUENCE_URL=http://localhost:8090
-# CONFLUENCE_USERNAME=admin
-# CONFLUENCE_PASSWORD=admin
-
-# Логирование (можно оставить по умолчанию)
-LOG_LEVEL=INFO
-LOG_FORMAT=text
-LOG_ENVIRONMENT=development
+# Остальные настройки можно оставить по умолчанию
 ```
 
 ### Шаг 3: Запустите приложение
@@ -94,26 +76,17 @@ CREATE DATABASE mnt_db;
 psql -U postgres -d mnt_db -f database/schema.sql
 ```
 
-### Шаг 6: Создайте файл `.env`
-В корне проекта создайте файл `.env`:
+### Шаг 6: Настройте config.py
+Откройте `app/config.py` и измените настройки базы данных:
 
-```env
-# База данных
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
-DATABASE_NAME=mnt_db
-DATABASE_USER=postgres
-DATABASE_PASSWORD=ваш_пароль_postgres
+```python
+# Обязательно измените пароль PostgreSQL:
+database_password: str = "ваш_пароль_postgres"  # ⚠️ ИЗМЕНИТЕ!
 
-# Confluence (заполните, если нужно)
-CONFLUENCE_URL=https://your-company.atlassian.net
-CONFLUENCE_EMAIL=your-email@example.com
-CONFLUENCE_API_TOKEN=your-api-token
-
-# Логирование
-LOG_LEVEL=INFO
-LOG_FORMAT=text
-LOG_ENVIRONMENT=development
+# Опционально для работы с Confluence:
+confluence_url: str = "https://your-company.atlassian.net"
+confluence_email: Optional[str] = "your-email@example.com"
+confluence_api_token: Optional[str] = "your-api-token"
 ```
 
 ### Шаг 7: Запустите приложение
@@ -136,7 +109,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### Ошибка подключения к базе данных
 - Проверьте, что PostgreSQL запущен
-- Проверьте правильность данных в `.env` файле
+- Проверьте правильность данных в `app/config.py`
 - Убедитесь, что база данных `mnt_db` создана
 
 ### Порт 8000 занят

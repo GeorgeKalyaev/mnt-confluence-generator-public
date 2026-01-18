@@ -340,3 +340,55 @@ def log_request(
     
     log_msg = f"HTTP | {method} {path} | Status: {status_code}"
     logger.log(level, log_msg, extra=extra)
+
+
+def log_security_event(
+    event_type: str,
+    description: str,
+    severity: str = "medium",  # low, medium, high, critical
+    details: Optional[dict] = None,
+    request_id: Optional[str] = None,
+    user_ip: Optional[str] = None,
+    user_name: Optional[str] = None,
+    url: Optional[str] = None
+):
+    """Логирование событий безопасности
+    
+    Args:
+        event_type: Тип события (например: 'validation_failed', 'sql_injection_attempt', 
+                   'xss_attempt', 'unauthorized_access', 'suspicious_activity')
+        description: Описание события
+        severity: Уровень серьезности (low, medium, high, critical)
+        details: Дополнительные детали
+        request_id: ID запроса
+        user_ip: IP адрес пользователя
+        user_name: Имя пользователя
+        url: URL где произошло событие
+    """
+    extra = {
+        'request_id': request_id or '-',
+        'user_ip': user_ip or '-',
+        'user_name': user_name or '-',
+        'security_event': True,
+        'event_type': event_type,
+        'severity': severity,
+        'url': url
+    }
+    
+    if details:
+        extra['security_details'] = details
+    
+    # Определяем уровень логирования на основе серьезности
+    severity_levels = {
+        'low': logging.INFO,
+        'medium': logging.WARNING,
+        'high': logging.ERROR,
+        'critical': logging.CRITICAL
+    }
+    level = severity_levels.get(severity, logging.WARNING)
+    
+    log_msg = f"[SECURITY] [{severity.upper()}] {event_type} | {description}"
+    if url:
+        log_msg += f" | URL: {url}"
+    
+    logger.log(level, log_msg, extra=extra)
