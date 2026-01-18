@@ -179,34 +179,62 @@
                 </td>
                 <td>{{ doc.project }}</td>
                 <td>{{ doc.author }}</td>
-                <td>
+                <td style="vertical-align: middle;">
                     {% if doc.status == 'published' %}
-                        <span class="badge bg-success">✓ Опубликовано</span>
-                        {% if doc.confluence_page_url %}
-                            <br><small class="text-muted">
-                                Последняя публикация: 
-                                {% if doc.last_publish_at %}
-                                    {{ doc.last_publish_at.strftime('%d.%m.%Y %H:%M') }}
-                                {% elif doc.updated_at %}
-                                    {{ doc.updated_at.strftime('%d.%m.%Y %H:%M') }} (примерно)
-                                {% else %}
-                                    N/A
-                                {% endif %}
-                            </small>
-                            {# Проверяем, есть ли неопубликованные изменения #}
-                            {% if doc.last_publish_at and doc.updated_at and doc.updated_at > doc.last_publish_at %}
-                                <small class="fw-bold" style="color: #8B0000;">⚠ Есть неопубликованные изменения!</small>
-                            {% elif doc.updated_at and not doc.last_publish_at %}
-                                <small class="fw-bold" style="color: #8B0000;">⚠ Возможно есть неопубликованные изменения</small>
+                        <div class="d-flex flex-column gap-1">
+                            <span class="badge bg-success" style="font-size: 0.85em; padding: 0.5em 0.75em;">
+                                ✓ Опубликовано
+                            </span>
+                            {% if doc.confluence_page_url %}
+                                <div style="font-size: 0.85em; color: #6c757d; line-height: 1.3;">
+                                    <div><strong>Последняя публикация:</strong></div>
+                                    <div>
+                                        {% if doc.last_publish_at %}
+                                            {{ doc.last_publish_at.strftime('%d.%m.%Y %H:%M') }}
+                                        {% elif doc.updated_at %}
+                                            {{ doc.updated_at.strftime('%d.%m.%Y %H:%M') }} <span class="text-muted">(примерно)</span>
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </div>
+                                    {# Проверяем, есть ли неопубликованные изменения #}
+                                    {% if doc.last_publish_at and doc.updated_at and doc.updated_at > doc.last_publish_at %}
+                                        <div class="mt-1">
+                                            <span class="badge bg-warning text-dark" style="font-size: 0.7em;">⚠ Есть неопубликованные изменения</span>
+                                        </div>
+                                    {% elif doc.updated_at and not doc.last_publish_at %}
+                                        <div class="mt-1">
+                                            <span class="badge bg-warning text-dark" style="font-size: 0.7em;">⚠ Возможны изменения</span>
+                                        </div>
+                                    {% endif %}
+                                </div>
                             {% endif %}
-                        {% endif %}
+                        </div>
                     {% elif doc.status == 'error' %}
-                        <span class="badge bg-danger">⚠ Ошибка публикации</span>
+                        <div class="d-flex flex-column gap-1">
+                            <span class="badge bg-danger" style="font-size: 0.85em; padding: 0.5em 0.75em;">
+                                ⚠ Ошибка публикации
+                            </span>
+                            {% if doc.last_error %}
+                                <small class="text-muted" style="font-size: 0.7em; max-width: 200px;">{{ doc.last_error[:50] }}{% if doc.last_error|length > 50 %}...{% endif %}</small>
+                            {% endif %}
+                        </div>
                     {% else %}
-                        <span class="badge bg-warning text-dark">📝 Черновик</span>
-                        {% if doc.confluence_page_id %}
-                            <br><small class="text-info">⚠ Ранее был опубликован, но есть несохраненные изменения</small>
-                        {% endif %}
+                        <div class="d-flex flex-column gap-1">
+                            <span class="badge bg-warning text-dark" style="font-size: 0.85em; padding: 0.5em 0.75em;">
+                                📝 Черновик
+                            </span>
+                            {% if doc.confluence_page_id %}
+                                <small style="font-size: 0.85em; font-weight: bold; color: #8B0000;">
+                                    ⚠ Ранее был опубликован
+                                    {% if doc.last_publish_at %}
+                                        <br><span style="font-weight: normal; color: #6c757d;">{{ doc.last_publish_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                                    {% elif doc.updated_at %}
+                                        <br><span style="font-weight: normal; color: #6c757d;">{{ doc.updated_at.strftime('%d.%m.%Y %H:%M') }} <span class="text-muted">(примерно)</span></span>
+                                    {% endif %}
+                                </small>
+                            {% endif %}
+                        </div>
                     {% endif %}
                 </td>
                 <td>
@@ -217,21 +245,25 @@
                     {% endif %}
                 </td>
                 <td>
-                    <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-sm btn-outline-info" onclick="quickPreview({{ doc.id }})" title="Быстрый просмотр">
+                    <div class="d-flex gap-1 flex-wrap">
+                        <a href="/mnt/{{ doc.id }}/edit" class="btn btn-sm" style="background-color: #4a90e2; color: white; border-color: #4a90e2;" title="Редактировать МНТ" onmouseover="this.style.backgroundColor='#357abd'" onmouseout="this.style.backgroundColor='#4a90e2'">
+                            ✏️ Редактировать
+                        </a>
+                        <button type="button" class="btn btn-sm" style="background-color: #17a2b8; color: white; border-color: #17a2b8;" onclick="quickPreview({{ doc.id }})" title="Быстрый просмотр" onmouseover="this.style.backgroundColor='#138496'" onmouseout="this.style.backgroundColor='#17a2b8'">
                             👁️ Просмотр
                         </button>
-                        <a href="/mnt/{{ doc.id }}/edit" class="btn btn-sm btn-outline-primary">✏️ Редактировать</a>
-                        <a href="/mnt/{{ doc.id }}/versions" class="btn btn-sm btn-outline-info" title="История версий">📜 История</a>
+                        <a href="/mnt/{{ doc.id }}/versions" class="btn btn-sm" style="background-color: #6f42c1; color: white; border-color: #6f42c1;" title="История версий" onmouseover="this.style.backgroundColor='#5a32a3'" onmouseout="this.style.backgroundColor='#6f42c1'">
+                            📜 История
+                        </a>
                         <form method="post" action="/mnt/{{ doc.id }}/duplicate" style="display: inline;" 
                               onsubmit="return confirm('Создать копию этого МНТ?\\n\\nКопия будет создана как черновик с названием \"{{ doc.title }} (копия)\".\\n\\nИстория изменений и лист согласования начнутся заново.');">
-                            <button type="submit" class="btn btn-sm btn-outline-info" title="Создать копию МНТ">
+                            <button type="submit" class="btn btn-sm" style="background-color: #28a745; color: white; border-color: #28a745;" title="Создать копию МНТ" onmouseover="this.style.backgroundColor='#218838'" onmouseout="this.style.backgroundColor='#28a745'">
                                 🔄 Дублировать
                             </button>
                         </form>
                         <form method="post" action="/mnt/{{ doc.id }}/delete" style="display: inline;" 
                               onsubmit="return confirm('Вы уверены, что хотите удалить этот МНТ?\\n\\nСтраница в Confluence будет удалена, но МНТ можно будет восстановить в течение 30 дней из корзины.');">
-                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить МНТ">
+                            <button type="submit" class="btn btn-sm" style="background-color: #dc3545; color: white; border-color: #dc3545;" title="Удалить МНТ" onmouseover="this.style.backgroundColor='#c82333'" onmouseout="this.style.backgroundColor='#dc3545'">
                                 ❌ Удалить
                             </button>
                         </form>
@@ -719,11 +751,11 @@ function formatDate(dateStr) {
 
 function getStatusBadge(status) {
     const badges = {
-        'published': '<span class="badge bg-success">✓ Опубликовано</span>',
-        'error': '<span class="badge bg-danger">⚠ Ошибка</span>',
-        'draft': '<span class="badge bg-warning text-dark">📝 Черновик</span>'
+        'published': '<span class="badge bg-success" style="font-size: 0.85em; padding: 0.5em 0.75em;">✓ Опубликовано</span>',
+        'error': '<span class="badge bg-danger" style="font-size: 0.85em; padding: 0.5em 0.75em;">⚠ Ошибка</span>',
+        'draft': '<span class="badge bg-warning text-dark" style="font-size: 0.85em; padding: 0.5em 0.75em;">📝 Черновик</span>'
     };
-    return badges[status] || '<span class="badge bg-secondary">' + status + '</span>';
+    return badges[status] || '<span class="badge bg-secondary" style="font-size: 0.85em; padding: 0.5em 0.75em;">' + status + '</span>';
 }
 </script>
 
