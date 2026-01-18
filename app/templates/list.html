@@ -225,7 +225,11 @@
                                 📝 Черновик
                             </span>
                             {% if doc.confluence_page_id %}
-                                <small style="font-size: 0.85em; font-weight: bold; color: #8B0000;">
+                                <small style="font-size: 0.85em; font-weight: bold; color: #8B0000; cursor: help;" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top"
+                                       data-bs-html="true"
+                                       data-bs-title="<div style='text-align: left;'>Этот документ был опубликован в Confluence, но затем редактировался.<br>Возможно, есть неопубликованные изменения.<br><br>Для публикации актуальной версии используйте кнопку &quot;Опубликовать&quot; при редактировании.</div>">
                                     ⚠ Ранее был опубликован
                                     {% if doc.last_publish_at %}
                                         <br><span style="font-weight: normal; color: #6c757d;">{{ doc.last_publish_at.strftime('%d.%m.%Y %H:%M') }}</span>
@@ -792,4 +796,14 @@ function getStatusBadge(status) {
     box-shadow: 0 2px 4px rgba(0,0,0,0.15);
 }
 </style>
+
+<script>
+// Инициализация tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
 {% endblock %}
